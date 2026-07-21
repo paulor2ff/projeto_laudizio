@@ -1,0 +1,9 @@
+{
+  "payload": {
+    "cliente_id": "demo_apresentacao",
+    "plano": "manutencao",
+    "emitido_em": "2026-06-25T01:48:25",
+    "valido_ate": "2026-07-25T01:48:25"
+  },
+  "assinatura": "dgBfnXG8xrDQE96BHpXbAEe9HtUBdoogtJ4K3d04AIXk8kdSCHWp5ua/xP+WyPk/XtMsk2v6HRkDz67NwrPmDQ=="
+}

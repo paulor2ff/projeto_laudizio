@@ -1,0 +1,10 @@
+# Servidor de Licenças — Dependências
+# Instalar com: pip install -r requirements.txt
+
+fastapi>=0.111.0           # Framework REST
+uvicorn[standard]>=0.29.0  # Servidor ASGI
+cryptography>=42.0.0       # Assinatura Ed25519 dos tokens
+requests>=2.31.0           # Chamadas à API do Mercado Pago
+
+# ── Stdlib (já incluídas no Python 3.11+) ──────────────────────────────────────
+# sqlite3, hmac, hashlib, json, secrets, logging

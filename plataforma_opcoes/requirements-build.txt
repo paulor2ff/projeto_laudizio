@@ -1,0 +1,8 @@
+# Dependências apenas para compilar um executável autocontido — não
+# necessárias para rodar a plataforma normalmente com Python.
+# Instalar com: pip install -r requirements-build.txt
+#
+# (requer também requirements.txt já instalado, e um compilador C:
+#  gcc/clang em Linux/macOS, ou MSVC/MinGW64 em Windows — ver build/BUILD.md)
+
+nuitka>=2.4.0

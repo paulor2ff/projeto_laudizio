@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plataforma de Opções B3</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:       #0d1117;
+    --bg2:      #161b22;
+    --bg3:      #21262d;
+    --border:   #30363d;
+    --text:     #e6edf3;
+    --text2:    #8b949e;
+    --azul:     #388bfd;
+    --azul2:    #1f6feb;
+    --verde:    #3fb950;
+    --verde2:   #0d4429;
+    --vermelho: #f85149;
+    --verm2:    #3d1a1a;
+    --amarelo:  #d29922;
+    --amar2:    #2d2006;
+    --roxo:     #8b5cf6;
+    --font:     'Segoe UI', system-ui, sans-serif;
+    --mono:     'Cascadia Code', 'Consolas', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 13px; }
+
+  /* ── Header ── */
+  header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  header h1 { font-size: 16px; font-weight: 600; color: var(--azul); }
+  .badge-status {
+    padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500;
+    background: var(--verde2); color: var(--verde);
+  }
+  .badge-status.desconectado { background: var(--verm2); color: var(--vermelho); }
+
+  /* ── Cotação destaque (header) ── */
+  .cot-box {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 16px; display: flex; align-items: center; gap: 16px;
+  }
+  .cot-preco { font-size: 22px; font-weight: 700; font-family: var(--mono); }
+  .cot-var   { font-size: 13px; font-weight: 600; }
+  .pos { color: var(--verde); } .neg { color: var(--vermelho); }
+
+  /* ── Barra de Abas ── */
+  nav.tabs {
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    padding: 0 20px; display: flex; align-items: center; gap: 2px; flex-wrap: wrap;
+  }
+  .tab-btn {
+    background: transparent; color: var(--text2); border: none;
+    border-bottom: 2px solid transparent; border-radius: 0;
+    padding: 11px 16px; font-size: 13px; font-weight: 500; cursor: pointer;
+  }
+  .tab-btn:hover  { color: var(--text); background: var(--bg3); }
+  .tab-btn.active { color: var(--azul); border-bottom-color: var(--azul); }
+  .tabs-spacer { margin-left: auto; padding: 8px 0; display: flex; align-items: center; gap: 8px; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Controles genéricos ── */
+  .controles {
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    padding: 10px 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  }
+  select, input[type=text], input[type=number] {
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+    padding: 5px 10px; border-radius: 6px; font-size: 12px; outline: none;
+  }
+  select:focus, input:focus { border-color: var(--azul2); }
+  button {
+    background: var(--azul2); color: #fff; border: none; border-radius: 6px;
+    padding: 5px 14px; font-size: 12px; cursor: pointer; font-weight: 500;
+  }
+  button:hover { background: var(--azul); }
+  button.sec {
+    background: var(--bg3); color: var(--text2); border: 1px solid var(--border);
+  }
+  button.sec:hover { color: var(--text); border-color: var(--azul); }
+  label { color: var(--text2); font-size: 12px; }
+
+  /* ── Tabela genérica ── */
+.tabela-wrap {
+    max-height:600px;
+    overflow:auto;
+    margin:0 20px 20px;
+}
+
+.tabela-wrap table {
+    width:100%;
+}
+
+.tabela-wrap thead th {
+    position:sticky;
+    top:0;
+    z-index:20;
+    background:var(--bg2);
+}
+
+  table { width: 100%; border-collapse: separate; border-spacing:0; font-size: 12px; font-family: var(--mono); }
+  thead th {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg2); color: var(--text2); padding: 8px 8px;
+    text-align: right; border-bottom: 1px solid var(--border);
+    white-space: nowrap; cursor: pointer; user-select: none;
+  }
+  thead th:first-child, thead th:nth-child(2),
+  thead th:nth-child(3) { text-align: left; }
+  thead th:hover { color: var(--azul); }
+  thead th .sort-icon { margin-left: 4px; opacity: 0.4; }
+  thead th.sorted .sort-icon { opacity: 1; color: var(--azul); }
+
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:hover { background: var(--bg3); }
+
+/* ── Flash de preço (alta/baixa) — usado no preço principal e nas linhas
+   da tabela de opções sempre que o valor muda numa atualização em tempo
+   real. Cada elemento "novo" (linhas recriadas) reproduz a animação
+   sozinho; para elementos reaproveitados (preço no cabeçalho), o JS força
+   um reflow antes de reaplicar a classe — ver dispararFlash(). ── */
+@keyframes flashAlta {
+  from { background: rgba(63, 185, 80, 0.38); }
+  to   { background: transparent; }
+}
+@keyframes flashBaixa {
+  from { background: rgba(248, 81, 73, 0.38); }
+  to   { background: transparent; }
+}
+.flash-alta  { animation: flashAlta  1.1s ease-out; }
+.flash-baixa { animation: flashBaixa 1.1s ease-out; }
+
+/* ── Snapshot recém-chegado ───────────────────────────── */
+  .snapshot-recente {
+    background: rgba(210, 153, 34, 0.18);
+    animation: snapshotFlash 0.6s ease;
+  }
+
+  .snapshot-recente:hover {
+    background: rgba(210, 153, 34, 0.25);
+  }
+
+  .snapshot-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    background: var(--verde2);
+    color: var(--verde);
+    font-size: 10px;
+    font-weight: 600;
+    font-family: var(--font);
+  }
+
+  @keyframes snapshotFlash {
+
+    from {
+        background: rgba(210,153,34,.45);
+    }
+
+    to {
+        background: rgba(210,153,34,.18);
+    }
+
+}
+
+  td { padding: 6px 8px; text-align: right; white-space: nowrap; }
+  td:first-child, td:nth-child(2), td:nth-child(3) { text-align: left; }
+
+  /* ── Badges tipo / moneyness ── */
+  .call  { color: var(--verde);    font-weight: 600; }
+  .put   { color: var(--vermelho); font-weight: 600; }
+  .itm   { background: var(--verde2); color: var(--verde); padding: 1px 6px; border-radius: 4px; }
+  .atm   { background: var(--amar2);  color: var(--amarelo); padding: 1px 6px; border-radius: 4px; }
+  .otm   { color: var(--text2); }
+  .nil   { color: var(--border); }
+
+  /* ── IQ bar ── */
+  .iq-bar   { display: inline-flex; align-items: center; gap: 5px; }
+  .iq-track { width: 50px; height: 5px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .iq-fill  { height: 100%; border-radius: 3px; }
+
+  /* ── Estatísticas rápidas (aba Opções) ── */
+  .stats-bar {
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    padding: 6px 20px; display: flex; gap: 24px; align-items: center;
+  }
+  .stat { display: flex; flex-direction: column; }
+  .stat-label { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-val   { font-size: 13px; font-weight: 600; font-family: var(--mono); }
+
+  /* ── Sem dados ── */
+  .sem-dados { color: var(--text2); text-align: center; padding: 40px; font-size: 14px; }
+
+  /* ── Painel de Alertas ── */
+  .alertas-painel { padding: 14px 20px; }
+  .alertas-form {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+  }
+  .alertas-tabela-wrap { max-height: 420px; overflow-y: auto; }
+  table.alertas-tabela { width: 100%; border-collapse: collapse; font-size: 12px; font-family: var(--mono); }
+  table.alertas-tabela th {
+    text-align: left; color: var(--text2); padding: 6px 8px;
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  table.alertas-tabela td { padding: 5px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .alerta-badge { padding: 1px 7px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+  .alerta-badge.ativo    { background: var(--verde2); color: var(--verde); }
+  .alerta-badge.inativo  { background: var(--bg3);    color: var(--text2); }
+  .alerta-badge.disparado{ background: var(--amar2);  color: var(--amarelo); }
+  button.danger { background: var(--verm2); color: var(--vermelho); }
+  button.danger:hover { background: var(--vermelho); color: #fff; }
+  .alertas-vazio { color: var(--text2); padding: 8px 0; font-size: 12px; }
+
+  /* ── Cards / Grids (Mercado, Histórico, Configurações) ── */
+  .cards-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px; padding: 20px;
+  }
+  .card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .card-preco-grande { grid-column: span 2; }
+  .card-label  { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .card-valor  { font-size: 18px; font-weight: 600; font-family: var(--mono); }
+  .card-valor-grande { font-size: 30px; font-weight: 700; font-family: var(--mono); }
+  .card-var    { font-size: 13px; font-weight: 600; margin-top: 4px; }
+  .secao-titulo { padding: 4px 20px; margin: 4px 0 0; font-size: 14px; color: var(--text); font-weight: 600; }
+
+  /* ── Histórico ── */
+  .hist-controles {
+    padding: 12px 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+  }
+  .chart-container {
+    padding: 16px; height: 320px; background: var(--bg2);
+    margin: 20px; border-radius: 8px; border: 1px solid var(--border);
+  }
+  .hist-filtros { padding: 4px 20px 10px; display: flex; gap: 10px; align-items: center; }
+
+  /* ── Configurações ── */
+  .cfg-linha { font-size: 12px; line-height: 1.9; color: var(--text); }
+  .cfg-linha b { color: var(--text2); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Plataforma de Opções B3</h1>
+  <div id="badge-ws" class="badge-status desconectado">● Desconectado</div>
+  <button id="btn-token" class="sec" onclick="configurarToken()"
+          title="Configurar token de autenticação da API" style="font-size:11px">
+    🔑 Token
+  </button>
+  <div class="cot-box" id="cot-box" style="display:none">
+    <div>
+      <div style="font-size:11px;color:var(--text2)" id="cot-ticker">—</div>
+      <div class="cot-preco" id="cot-preco">—</div>
+    </div>
+    <div class="cot-var" id="cot-var">—</div>
+    <div style="font-size:10px;color:var(--text2)" id="cot-ts">—</div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="mercado"   onclick="mudarAba('mercado')">📊 Mercado</button>
+  <button class="tab-btn"        data-tab="historico" onclick="mudarAba('historico')">📈 Histórico</button>
+  <button class="tab-btn"        data-tab="opcoes"    onclick="mudarAba('opcoes')">🎯 Opções</button>
+  <button class="tab-btn"        data-tab="alertas"   onclick="mudarAba('alertas')">🔔 Alertas</button>
+  <button class="tab-btn"        data-tab="config"    onclick="mudarAba('config')">⚙️ Configurações</button>
+  <div class="tabs-spacer">
+    <label>Ticker </label>
+    <select id="sel-ticker" onchange="trocarTicker()"></select>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ABA MERCADO
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="tab-panel active" id="tab-mercado">
+  <div class="cards-grid">
+    <div class="card card-preco-grande">
+      <div class="card-label">Preço Atual</div>
+      <div class="card-valor-grande" id="mkt-preco">—</div>
+      <div class="card-var" id="mkt-var">—</div>
+    </div>
+    <div class="card"><div class="card-label">Abertura</div><div class="card-valor" id="mkt-abertura">—</div></div>
+    <div class="card"><div class="card-label">Máxima do dia</div><div class="card-valor" id="mkt-maxima">—</div></div>
+    <div class="card"><div class="card-label">Mínima do dia</div><div class="card-valor" id="mkt-minima">—</div></div>
+    <div class="card"><div class="card-label">Volume</div><div class="card-valor" id="mkt-volume">—</div></div>
+    <div class="card"><div class="card-label">Fech. Anterior</div><div class="card-valor" id="mkt-fech-ant">—</div></div>
+  </div>
+  <div style="padding:0 20px 4px;color:var(--text2);font-size:11px">
+    Abertura/Máxima/Mínima/Volume referem-se ao último candle diário coletado — não são necessariamente do pregão de hoje enquanto a integração de tempo real não estiver ativa.
+  </div>
+
+  <h3 class="secao-titulo">Últimos Snapshots</h3>
+  <div class="tabela-wrap">
+    <table id="tabela-snapshots">
+      <thead>
+        <tr><th>Timestamp</th><th>Preço</th><th>Variação</th><th>Fonte</th><th>Status</th></tr>
+      </thead>
+      <tbody id="tbody-snapshots"></tbody>
+    </table>
+    <div id="snapshots-vazio" class="sem-dados" style="display:none">
+      Nenhum snapshot registrado ainda para este ticker. Snapshots são gravados automaticamente pelo scheduler durante o pregão.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ABA HISTÓRICO
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-historico">
+  <div class="hist-controles">
+    <label>Período </label>
+    <select id="hist-periodo" onchange="carregarHistorico()">
+      <option value="1mo">1 mês</option>
+      <option value="3mo">3 meses</option>
+      <option value="6mo">6 meses</option>
+      <option value="1y">1 ano</option>
+      <option value="2y" selected>2 anos</option>
+      <option value="5y">5 anos</option>
+      <option value="max">Máximo</option>
+    </select>
+    <button class="sec" onclick="carregarHistorico()">↻ Atualizar</button>
+    <button onclick="exportarHistoricoCSV()">⬇ CSV</button>
+    <button class="sec" onclick="exportarHistoricoXlsx()">⬇ Excel</button>
+    <button class="sec" onclick="exportarHistoricoPdf()">⬇ PDF</button>
+    <span id="hist-periodo-info" style="color:var(--text2);font-size:11px;margin-left:auto"></span>
+  </div>
+
+  <div class="chart-container">
+    <canvas id="chart-historico"></canvas>
+  </div>
+
+  <h3 class="secao-titulo">Estatísticas e Indicadores</h3>
+  <div class="cards-grid" id="hist-stats">
+    <div class="card"><div class="card-label">Preço Atual</div><div class="card-valor" id="hs-preco">—</div></div>
+    <div class="card"><div class="card-label">Média Móvel 20</div><div class="card-valor" id="hs-ma20">—</div></div>
+    <div class="card"><div class="card-label">Média Móvel 200</div><div class="card-valor" id="hs-ma200">—</div></div>
+    <div class="card"><div class="card-label">RSI (14)</div><div class="card-valor" id="hs-rsi">—</div></div>
+    <div class="card"><div class="card-label">ATR (14)</div><div class="card-valor" id="hs-atr">—</div></div>
+    <div class="card"><div class="card-label">Volatilidade Anual</div><div class="card-valor" id="hs-vol">—</div></div>
+    <div class="card"><div class="card-label">Retorno 30 pregões</div><div class="card-valor" id="hs-ret30">—</div></div>
+    <div class="card"><div class="card-label">Retorno 12 meses</div><div class="card-valor" id="hs-ret252">—</div></div>
+    <div class="card"><div class="card-label">Máxima Histórica</div><div class="card-valor" id="hs-maxh">—</div></div>
+    <div class="card"><div class="card-label">Mínima Histórica</div><div class="card-valor" id="hs-minh">—</div></div>
+  </div>
+
+  <h3 class="secao-titulo">Cotações</h3>
+  <div class="hist-filtros">
+    <input type="text" id="hist-busca-data" placeholder="Filtrar por data (AAAA-MM-DD ou parte)..."
+           style="width:220px" oninput="filtrarHistoricoTabela()">
+    <span id="hist-total" style="color:var(--text2);font-size:11px;margin-left:auto"></span>
+  </div>
+  <div class="tabela-wrap">
+    <table id="tabela-historico">
+      <thead>
+        <tr>
+          <th onclick="ordenarHistorico('data')">Data<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenarHistorico('abertura')">Abertura<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenarHistorico('maxima')">Máxima<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenarHistorico('minima')">Mínima<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenarHistorico('fechamento')">Fechamento<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenarHistorico('volume')">Volume<span class="sort-icon">⇅</span></th>
+        </tr>
+      </thead>
+      <tbody id="tbody-historico"></tbody>
+    </table>
+    <div id="historico-vazio" class="sem-dados" style="display:none">
+      Nenhum histórico de cotações coletado para este ticker. Execute <code>python cli.py --coletar --ticker SEU_TICKER</code> no terminal.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ABA OPÇÕES  (estrutura e lógica idênticas à v10 — apenas realocada para a aba)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-opcoes">
+  <div class="controles">
+    <div>
+      <label>Tipo </label>
+      <select id="sel-tipo" onchange="filtrar()">
+        <option value="">Todos</option>
+        <option value="CALL">CALL</option>
+        <option value="PUT">PUT</option>
+      </select>
+    </div>
+    <div>
+      <label>Vencimento </label>
+      <select id="sel-venc" onchange="filtrar()"><option value="">Todos</option></select>
+    </div>
+    <div>
+      <label>Strike min </label>
+      <input type="number" id="inp-smin" placeholder="0" style="width:70px" oninput="filtrar()">
+    </div>
+    <div>
+      <label>Strike max </label>
+      <input type="number" id="inp-smax" placeholder="∞" style="width:70px" oninput="filtrar()">
+    </div>
+    <div>
+      <label>Busca </label>
+      <input type="text" id="inp-busca" placeholder="código..." style="width:100px" oninput="filtrar()">
+    </div>
+    <div>
+      <label>IQ mín </label>
+      <input type="number" id="inp-iq" placeholder="0" style="width:55px" oninput="filtrar()">
+    </div>
+    <button onclick="exportarCSV()">⬇ CSV</button>
+    <button class="sec" onclick="exportarOpcoesXlsx()">⬇ Excel</button>
+    <button class="sec" onclick="exportarOpcoesPdf()">⬇ PDF</button>
+    <button class="sec" onclick="atualizarManual()">↻ Atualizar</button>
+    <span id="txt-total" style="color:var(--text2);font-size:11px;margin-left:auto"></span>
+  </div>
+
+  <div class="stats-bar" id="stats-bar" style="display:none">
+    <div class="stat"><span class="stat-label">Contratos</span><span class="stat-val" id="st-total">—</span></div>
+    <div class="stat"><span class="stat-label">Exibindo</span><span class="stat-val" id="st-exib">—</span></div>
+    <div class="stat"><span class="stat-label">CALL</span><span class="stat-val pos" id="st-call">—</span></div>
+    <div class="stat"><span class="stat-label">PUT</span><span class="stat-val neg" id="st-put">—</span></div>
+    <div class="stat"><span class="stat-label">ITM</span><span class="stat-val" id="st-itm">—</span></div>
+    <div class="stat"><span class="stat-label">ATM</span><span class="stat-val" id="st-atm">—</span></div>
+    <div class="stat"><span class="stat-label">OTM</span><span class="stat-val" id="st-otm">—</span></div>
+    <div class="stat"><span class="stat-label">Última atualiz.</span><span class="stat-val" id="st-ts">—</span></div>
+  </div>
+
+  <div class="tabela-wrap">
+    <table id="tabela">
+      <thead>
+        <tr>
+          <th onclick="ordenar('codigo')">Código<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenar('tipo')">Tipo<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenar('otm_atm_itm')">A/I/OTM<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenar('strike')">Strike<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenar('dist_strike')">Dist. Strike<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenar('vencimento')">Vencimento<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenar('ultimo')">Último<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenar('variacao_pct')">Var. %<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenar('num_negocios')">Nº Neg.<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenar('vol_financeiro')">Vol. Fin.<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenar('vol_implícita')">Vol. Impl.<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenar('delta')">Delta<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenar('gamma')">Gamma<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenar('theta')">Theta<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenar('vega')">Vega<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenar('rho')">Rho<span class="sort-icon">⇅</span></th>
+          <th onclick="ordenar('iq_calc')">IQ<span class="sort-icon">⇅</span></th>
+          <th>Coberto</th>
+          <th>Descob.</th>
+          <th>Travado</th>
+          <th>Tit.</th>
+          <th>Lanç.</th>
+          <th onclick="ordenar('modelo')">Mod.<span class="sort-icon">⇅</span></th>
+          <th>Data/Hora</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div id="sem-dados" class="sem-dados" style="display:none">
+      <div style="margin-bottom:12px;font-size:15px;font-weight:500">📭 Nenhum dado no banco para este ticker</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px">
+        Execute os comandos abaixo no terminal antes de usar o dashboard:
+      </div>
+      <div id="instrucao-ticker" style="font-family:var(--mono);font-size:12px;
+           background:var(--bg2);border:1px solid var(--border);
+           border-radius:6px;padding:10px 14px;text-align:left;margin-bottom:16px;line-height:1.8">
+      </div>
+      <button id="btn-coletar" onclick="coletar()" style="margin-right:8px">⬇ Coletar agora</button>
+      <button class="sec" onclick="atualizarManual()">↻ Recarregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ABA ALERTAS  (lógica idêntica à v10 — antes era painel colapsável, agora é aba)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-alertas">
+  <div class="alertas-painel">
+    <div class="alertas-form">
+      <div>
+        <label>Tipo </label>
+        <select id="al-tipo" style="width:100px">
+          <option value="delta">delta</option>
+          <option value="preco">preco</option>
+          <option value="variacao">variacao</option>
+          <option value="iq">iq</option>
+          <option value="vol_impl">vol_impl</option>
+        </select>
+      </div>
+      <div>
+        <label>Cond. </label>
+        <select id="al-operador" style="width:55px">
+          <option value=">">&gt;</option>
+          <option value="<">&lt;</option>
+          <option value=">=">&gt;=</option>
+          <option value="<=">&lt;=</option>
+        </select>
+      </div>
+      <div>
+        <label>Valor </label>
+        <input type="number" id="al-valor" placeholder="0.5" style="width:80px">
+      </div>
+      <div>
+        <label>Código (opcional) </label>
+        <input type="text" id="al-codigo" placeholder="BBAS3C200A" style="width:130px">
+      </div>
+      <div>
+        <label>Cooldown (min) </label>
+        <input type="number" id="al-cooldown" placeholder="15" value="15" style="width:60px">
+      </div>
+      <button onclick="criarAlerta()">+ Adicionar</button>
+      <span id="al-erro" style="color:var(--vermelho);font-size:11px"></span>
+    </div>
+    <div class="alertas-tabela-wrap">
+      <table class="alertas-tabela" id="al-tabela">
+        <thead>
+          <tr>
+            <th>ID</th><th>Tipo</th><th>Código</th><th>Condição</th>
+            <th>Activo</th><th>Disparado</th><th>Cooldown</th><th>Últ. valor</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="al-tbody"></tbody>
+      </table>
+      <div id="al-vazio" class="alertas-vazio" style="display:none">
+        Nenhum alerta configurado para este ticker.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     ABA CONFIGURAÇÕES
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-config">
+  <div class="cards-grid">
+    <div class="card">
+      <div class="card-label">Autenticação</div>
+      <div class="cfg-linha">Token Bearer usado pelo dashboard para falar com a API local.</div>
+      <div style="margin-top:10px"><button onclick="configurarToken()">🔑 Configurar Token</button></div>
+    </div>
+    <div class="card" style="grid-column: span 2">
+      <div class="card-label">Tickers Monitorados</div>
+      <div class="cfg-linha" id="cfg-tickers">—</div>
+    </div>
+  </div>
+  <h3 class="secao-titulo">Status do Sistema</h3>
+  <div class="cards-grid">
+    <div class="card" style="grid-column: span 3">
+      <div class="cfg-linha" id="cfg-status">Carregando...</div>
+    </div>
+  </div>
+  <h3 class="secao-titulo">Resumo do Banco de Dados</h3>
+  <div class="cards-grid">
+    <div class="card" style="grid-column: span 3">
+      <div class="cfg-linha" id="cfg-resumo">Carregando...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Estado ───────────────────────────────────────────────────────────────────
+let dadosBrutos  = [];
+let dadosFiltrados = [];
+let ws           = null;
+let wsAtivo      = false;
+let ticker       = "";
+let ultimoSnapshotTimestamp = null;
+let timeoutSnapshot = null;
+let precoAnterior = null;               // último preço conhecido (flash do preço principal)
+let precosAnterioresOpcoes = new Map(); // codigo -> último 'ultimo' conhecido (flash da tabela)
+let sortCol      = "strike";
+let sortAsc      = true;
+let abaAtiva     = "mercado";
+const API        = window.location.origin;
+
+// ── Token de autenticação ─────────────────────────────────────────────────────
+// O token é gerado automaticamente pelo servidor na primeira execução
+// (consultar api_token.txt na pasta do programa, ou o log do terminal).
+function obterToken() {
+  try { return localStorage.getItem("opcoes_api_token") || ""; }
+  catch(e) { return ""; }
+}
+function definirToken(t) {
+  try { localStorage.setItem("opcoes_api_token", t || ""); }
+  catch(e) { console.warn("Não foi possível guardar o token:", e); }
+}
+function configurarToken() {
+  const actual = obterToken();
+  const novo = prompt(
+    "Token de autenticação da API\n\n" +
+    "Encontre-o em api_token.txt na pasta do programa,\n" +
+    "ou no log do terminal na primeira execução.\n\n" +
+    "Deixe vazio se a API não exigir autenticação:",
+    actual
+  );
+  if (novo !== null) {
+    definirToken(novo.trim());
+    atualizarBadgeToken();
+    if (ticker) { reconectar(); carregarAbaAtiva(); }
+  }
+}
+function authHeaders(extra={}) {
+  const t = obterToken();
+  return t ? {...extra, "Authorization": `Bearer ${t}`} : extra;
+}
+function atualizarBadgeToken() {
+  const btn = document.getElementById("btn-token");
+  if (!btn) return;
+  btn.textContent = obterToken() ? "🔑 Token ✓" : "🔑 Token";
+}
+
+// ── Sistema de Abas ──────────────────────────────────────────────────────────
+function mudarAba(nome) {
+  abaAtiva = nome;
+  document.querySelectorAll(".tab-btn").forEach(b =>
+    b.classList.toggle("active", b.dataset.tab === nome));
+  document.querySelectorAll(".tab-panel").forEach(p =>
+    p.classList.toggle("active", p.id === `tab-${nome}`));
+  carregarAbaAtiva();
+}
+
+function carregarAbaAtiva() {
+  if (!ticker) return;
+  if (abaAtiva === "mercado")   carregarMercado();
+  if (abaAtiva === "historico") carregarHistorico();
+  if (abaAtiva === "alertas")   carregarAlertas();
+  if (abaAtiva === "config")    carregarConfig();
+  // "opcoes" já é mantida atualizada em segundo plano via WebSocket
+}
+
+function trocarTicker() {
+  reconectar();
+  carregarAbaAtiva();
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+async function init() {
+  atualizarBadgeToken();
+  await carregarTickers();
+  reconectar();
+  carregarAbaAtiva();
+}
+
+async function carregarTickers() {
+  try {
+    const r  = await fetchComTimeout(`${API}/tickers`, {headers: authHeaders()});
+    const d  = await r.json();
+    const sel = document.getElementById("sel-ticker");
+    sel.innerHTML = d.tickers.map(t =>
+      `<option value="${t}">${t.replace(".SA","")}</option>`
+    ).join("");
+    ticker = d.tickers[0] || "";
+  } catch(e) {
+    console.error("Falha ao carregar tickers:", e);
+  }
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+function reconectar() {
+  ticker = document.getElementById("sel-ticker").value;
+  if (ws) { ws.close(); ws = null; }
+  precoAnterior = null;
+  precosAnterioresOpcoes.clear();
+  if (!ticker) return;
+  const code  = ticker.replace(".SA","");
+  const token = obterToken();
+  const qs    = token ? `?token=${encodeURIComponent(token)}` : "";
+  const wsUrl = `${API.replace("https","wss").replace("http","ws")}/ws/${code}${qs}`;
+  ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    wsAtivo = true;
+    setBadge(true);
+  };
+  ws.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+    if (d.tipo === "update") {
+      atualizarCotacao(d.cotacao);
+      atualizarTabela(d.opcoes, d.timestamp);
+      if (d.banco_vazio) {
+        document.getElementById("stats-bar").style.display = "none";
+      }
+    }
+  };
+  ws.onclose = (e) => {
+    wsAtivo = false;
+    setBadge(false);
+    if (e.code === 4401) {
+      console.error("Token inválido — WebSocket rejeitado pelo servidor.");
+      const badge = document.getElementById("badge-ws");
+      if (badge) badge.textContent = "● Token inválido";
+      return;
+    }
+    setTimeout(reconectar, 5000);
+  };
+  ws.onerror = () => ws.close();
+}
+
+function setBadge(ok) {
+  const b = document.getElementById("badge-ws");
+  b.textContent = ok ? "● Conectado" : "● Desconectado";
+  b.className   = "badge-status" + (ok ? "" : " desconectado");
+}
+
+// Aplica a classe de flash (alta/baixa) num elemento. Se o elemento já
+// tinha a mesma classe de uma atualização anterior, o navegador não
+// reinicia sozinho a animação — por isso remove, força um reflow (leitura
+// de offsetWidth) e só então reaplica. Elementos recriados do zero (ex.:
+// linhas da tabela de opções) não precisam disto, já tocam a animação
+// naturalmente ao entrar no DOM.
+function dispararFlash(el, subiu) {
+  if (!el) return;
+  el.classList.remove("flash-alta", "flash-baixa");
+  void el.offsetWidth;
+  el.classList.add(subiu ? "flash-alta" : "flash-baixa");
+}
+
+// ── Cotação (header + espelhada no card grande da aba Mercado) ──────────────
+function atualizarCotacao(cot) {
+  if (!cot) return;
+  document.getElementById("cot-box").style.display = "flex";
+  document.getElementById("cot-ticker").textContent = cot.ticker || ticker;
+  const precoStr = (cot.preco && cot.preco > 0) ? `R$ ${fmt(cot.preco, 2)}` : "— (sem cotação)";
+  const precoEl  = document.getElementById("cot-preco");
+  precoEl.textContent = precoStr;
+
+  const precoValido = cot.preco && cot.preco > 0;
+  if (precoValido && precoAnterior !== null && cot.preco !== precoAnterior) {
+    const subiu = cot.preco > precoAnterior;
+    dispararFlash(precoEl, subiu);
+    dispararFlash(document.getElementById("mkt-preco"), subiu);
+  }
+  if (precoValido) precoAnterior = cot.preco;
+
+  const v   = cot.variacao_pct || 0;
+  const vel = document.getElementById("cot-var");
+  if (cot.preco && cot.preco > 0) {
+    vel.textContent = (v >= 0 ? "▲ " : "▼ ") + Math.abs(v).toFixed(2) + "%";
+    vel.className   = "cot-var " + (v >= 0 ? "pos" : "neg");
+  } else {
+    vel.textContent = "";
+  }
+  document.getElementById("cot-ts").textContent = cot.timestamp || "";
+
+  // Espelha no card grande da aba Mercado
+  const mktPreco = document.getElementById("mkt-preco");
+  const mktVar   = document.getElementById("mkt-var");
+  if (mktPreco) mktPreco.textContent = precoStr;
+  if (mktVar) {
+    if (cot.preco && cot.preco > 0) {
+      mktVar.textContent = (v >= 0 ? "▲ " : "▼ ") + Math.abs(v).toFixed(2) + "%";
+      mktVar.className   = "card-var " + (v >= 0 ? "pos" : "neg");
+    } else {
+      mktVar.textContent = "";
+      mktVar.className   = "card-var";
+    }
+  }
+}
+
+// ── Aba Mercado ──────────────────────────────────────────────────────────────
+async function carregarMercado() {
+  if (!ticker) return;
+  const code = ticker.replace(".SA","");
+
+  try {
+    const r = await fetchComTimeout(`${API}/cotacoes/${code}?limite=1`, {headers: authHeaders()});
+    const d = await r.json();
+    const candle = (d.dados && d.dados[0]) || null;
+    document.getElementById("mkt-abertura").textContent = candle ? fmtN(candle.abertura,2,"","R$ ").replace(/<[^>]*>/g,"—") : "—";
+    document.getElementById("mkt-maxima").innerHTML   = candle ? fmtN(candle.maxima,2,"","R$ ")   : "—";
+    document.getElementById("mkt-minima").innerHTML   = candle ? fmtN(candle.minima,2,"","R$ ")   : "—";
+    document.getElementById("mkt-volume").innerHTML   = candle ? fmtI(candle.volume)              : "—";
+    document.getElementById("mkt-fech-ant").innerHTML = candle ? fmtN(candle.fechamento,2,"","R$ "): "—";
+    document.getElementById("mkt-abertura").innerHTML = candle ? fmtN(candle.abertura,2,"","R$ ")  : "—";
+  } catch(e) {
+    console.error("Erro ao carregar candle:", e);
+  }
+  await carregarSnapshots();
+}
+
+async function carregarSnapshots() {
+  if (!ticker) return;
+  const code = ticker.replace(".SA","");
+
+  try {
+    const rs = await fetchComTimeout(`${API}/snapshots/${code}?limite=2500`, {headers: authHeaders(), cache: "no-store"});
+    const ds = await rs.json();
+    renderizarSnapshots(ds.snapshots || []);
+} catch (e) {
+    console.error("Erro ao atualizar snapshots:", e);
+    renderizarSnapshots([]);
+  }
+}
+
+function renderizarSnapshots(lista) {
+
+  const tbody = document.getElementById("tbody-snapshots");
+  const vazio = document.getElementById("snapshots-vazio");
+
+  if (!lista.length) {
+    tbody.innerHTML = "";
+    vazio.style.display = "block";
+    return;
+  }
+
+  vazio.style.display = "none";
+
+  // O primeiro registro é o snapshot mais recente
+  const chegouNovo =
+      ultimoSnapshotTimestamp !== null &&
+      lista[0].timestamp !== ultimoSnapshotTimestamp;
+
+  // Atualiza a referência
+  ultimoSnapshotTimestamp = lista[0].timestamp;
+  tbody.innerHTML = lista.map((s, indice) => {
+    const destaque =
+        chegouNovo && indice === 0
+            ? "snapshot-recente"
+            : "";
+    const badge =
+        chegouNovo && indice === 0
+            ? '<span class="snapshot-badge">Novo</span>'
+            : "";
+    return `
+      <tr class="${destaque}">
+        <td>
+          ${(s.timestamp || "").substring(0,19)}
+          ${badge}
+        </td>
+        <td>${fmtN(s.preco_atual,2,"","R$ ")}</td>
+        <td class="${(s.variacao_pct||0)>=0?'pos':'neg'}">
+          ${fmtN(s.variacao_pct,2,"%")}
+        </td>
+        <td style="color:var(--text2)">
+          ${s.fonte || "—"}
+        </td>
+        <td class="${s.status==='ok'?'pos':'neg'}">
+          ${s.status || "—"}
+        </td>
+      </tr>
+    `;
+
+  }).join("");
+  if (chegouNovo) {
+    clearTimeout(timeoutSnapshot);
+    timeoutSnapshot = setTimeout(() => {
+      const linha = document.querySelector(".snapshot-recente");
+      if (linha)
+        linha.classList.remove("snapshot-recente");
+      const badge = document.querySelector(".snapshot-badge");
+      if (badge)
+        badge.remove();
+    }, 10000);
+  }
+}
+
+function sma(valores, periodo) {
+  if (valores.length < periodo) return null;
+  const janela = valores.slice(-periodo);
+  return janela.reduce((a,b) => a+b, 0) / periodo;
+}
+
+function rsi(fechamentos, periodo=14) {
+  if (fechamentos.length < periodo + 1) return null;
+  let ganhos = 0, perdas = 0;
+  for (let i = 1; i <= periodo; i++) {
+    const delta = fechamentos[i] - fechamentos[i-1];
+    if (delta > 0) ganhos += delta; else perdas += -delta;
+  }
+  let mediaGanho = ganhos / periodo;
+  let mediaPerda = perdas / periodo;
+  for (let i = periodo + 1; i < fechamentos.length; i++) {
+    const delta = fechamentos[i] - fechamentos[i-1];
+    const ganho = delta > 0 ? delta : 0;
+    const perda = delta < 0 ? -delta : 0;
+    mediaGanho = (mediaGanho * (periodo-1) + ganho) / periodo;
+    mediaPerda = (mediaPerda * (periodo-1) + perda) / periodo;
+  }
+  if (mediaPerda === 0) return 100;
+  const rs = mediaGanho / mediaPerda;
+  return 100 - (100 / (1 + rs));
+}
+
+function atr(maximas, minimas, fechamentos, periodo=14) {
+  if (maximas.length < periodo + 1) return null;
+  const trs = [];
+  for (let i = 1; i < maximas.length; i++) {
+    const tr = Math.max(
+      maximas[i] - minimas[i],
+      Math.abs(maximas[i] - fechamentos[i-1]),
+      Math.abs(minimas[i] - fechamentos[i-1])
+    );
+    trs.push(tr);
+  }
+  let atrAtual = trs.slice(0, periodo).reduce((a,b) => a+b, 0) / periodo;
+  for (let i = periodo; i < trs.length; i++) {
+    atrAtual = (atrAtual * (periodo-1) + trs[i]) / periodo;
+  }
+  return atrAtual;
+}
+
+function volatilidadeAnual(fechamentos) {
+  if (fechamentos.length < 2) return null;
+  const retornos = [];
+  for (let i = 1; i < fechamentos.length; i++) {
+    retornos.push(Math.log(fechamentos[i] / fechamentos[i-1]));
+  }
+  const media = retornos.reduce((a,b) => a+b, 0) / retornos.length;
+  const variancia = retornos.reduce((a,b) => a + (b-media)**2, 0) / (retornos.length - 1);
+  return Math.sqrt(variancia) * Math.sqrt(252) * 100;
+}
+
+// ── Aba Histórico ────────────────────────────────────────────────────────────
+let historicoDados    = [];  // ordem cronológica ASC (mais antigo primeiro)
+let historicoFiltrado = [];
+let histSortCol = "data";
+let histSortAsc = false;
+let chartHistorico = null;
+
+function calcularDataInicio(periodo) {
+  if (periodo === "max") return null;
+  const d = new Date();
+  const mapa = {"1mo":[0,1], "3mo":[0,3], "6mo":[0,6], "1y":[1,0], "2y":[2,0], "5y":[5,0]};
+  const [anos, meses] = mapa[periodo] || [2,0];
+  d.setFullYear(d.getFullYear() - anos);
+  d.setMonth(d.getMonth() - meses);
+  return d.toISOString().substring(0,10);
+}
+
+async function carregarHistorico() {
+  if (!ticker) return;
+  const code = ticker.replace(".SA","");
+  const periodo = document.getElementById("hist-periodo").value;
+  const de = calcularDataInicio(periodo);
+  const qs = de ? `?de=${de}&limite=5000` : `?limite=5000`;
+  document.getElementById("hist-periodo-info").textContent = de ? `desde ${de}` : "todo o histórico coletado";
+  try {
+    const r = await fetchComTimeout(`${API}/cotacoes/${code}${qs}`, {headers: authHeaders()});
+    const d = await r.json();
+    // API devolve mais recente primeiro (DESC) — inverter p/ ordem cronológica
+    historicoDados = (d.dados || []).slice().reverse();
+  } catch(e) {
+    console.error("Erro ao carregar histórico:", e);
+    historicoDados = [];
+  }
+  renderizarHistoricoCompleto();
+}
+
+function renderizarHistoricoCompleto() {
+  const vazio = document.getElementById("historico-vazio");
+  if (!historicoDados.length) {
+    vazio.style.display = "block";
+    document.getElementById("tbody-historico").innerHTML = "";
+    document.getElementById("hist-total").textContent = "";
+    if (chartHistorico) { chartHistorico.destroy(); chartHistorico = null; }
+    ["hs-preco","hs-ma20","hs-ma200","hs-rsi","hs-atr","hs-vol","hs-ret30","hs-ret252","hs-maxh","hs-minh"]
+      .forEach(id => { document.getElementById(id).textContent = "—"; });
+    return;
+  }
+  vazio.style.display = "none";
+  atualizarGraficoHistorico();
+  atualizarEstatisticasHistorico();
+  historicoFiltrado = historicoDados.slice();
+  histSortCol = "data"; histSortAsc = false;
+  ordenarHistoricoLocal();
+  renderizarTabelaHistorico();
+}
+
+function atualizarGraficoHistorico() {
+  const canvas = document.getElementById("chart-historico");
+  const container = canvas.parentElement;
+  if (typeof Chart === "undefined") {
+    container.innerHTML = '<div class="sem-dados">Biblioteca de gráficos não carregou (verifique a conexão à internet). A tabela abaixo continua disponível normalmente.</div>';
+    return;
+  }
+  const labels      = historicoDados.map(c => c.data);
+  const fechamentos = historicoDados.map(c => c.fechamento);
+  const volumes     = historicoDados.map(c => c.volume);
+  const ma20  = fechamentos.map((_,i) => i>=19  ? sma(fechamentos.slice(0,i+1),20)  : null);
+  const ma200 = fechamentos.map((_,i) => i>=199 ? sma(fechamentos.slice(0,i+1),200) : null);
+
+  if (chartHistorico) chartHistorico.destroy();
+  chartHistorico = new Chart(canvas.getContext("2d"), {
+    data: {
+      labels,
+      datasets: [
+        { type:"line", label:"Fechamento", data:fechamentos, borderColor:"#388bfd",
+          backgroundColor:"transparent", borderWidth:1.5, pointRadius:0, yAxisID:"y" },
+        { type:"line", label:"MA20",  data:ma20,  borderColor:"#d29922",
+          backgroundColor:"transparent", borderWidth:1, pointRadius:0, yAxisID:"y" },
+        { type:"line", label:"MA200", data:ma200, borderColor:"#8b5cf6",
+          backgroundColor:"transparent", borderWidth:1, pointRadius:0, yAxisID:"y" },
+        { type:"bar", label:"Volume", data:volumes, backgroundColor:"rgba(139,148,158,0.25)", yAxisID:"y1" },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode:"index", intersect:false },
+      scales: {
+        x:  { ticks:{ color:"#8b949e", maxTicksLimit:12 }, grid:{ color:"#21262d" } },
+        y:  { position:"left",  ticks:{ color:"#8b949e" }, grid:{ color:"#21262d" } },
+        y1: { position:"right", ticks:{ color:"#8b949e" }, grid:{ display:false } },
+      },
+      plugins: { legend: { labels: { color: "#e6edf3", boxWidth: 12, font: { size: 11 } } } },
+    }
+  });
+}
+
+function atualizarEstatisticasHistorico() {
+  const fechamentos = historicoDados.map(c => c.fechamento).filter(v => v != null);
+  const maximas      = historicoDados.map(c => c.maxima).filter(v => v != null);
+  const minimas       = historicoDados.map(c => c.minima).filter(v => v != null);
+
+  const precoAtual = fechamentos[fechamentos.length - 1];
+  document.getElementById("hs-preco").innerHTML = fmtN(precoAtual,2,"","R$ ");
+  document.getElementById("hs-ma20").innerHTML  = fmtN(sma(fechamentos,20),2,"","R$ ");
+  document.getElementById("hs-ma200").innerHTML = fmtN(sma(fechamentos,200),2,"","R$ ");
+
+  const rsiVal = rsi(fechamentos,14);
+  document.getElementById("hs-rsi").textContent = rsiVal!=null ? rsiVal.toFixed(1) : "—";
+
+  const atrVal = atr(maximas, minimas, fechamentos, 14);
+  document.getElementById("hs-atr").innerHTML = fmtN(atrVal,2,"","R$ ");
+
+  const volVal = volatilidadeAnual(fechamentos);
+  document.getElementById("hs-vol").textContent = volVal!=null ? volVal.toFixed(1)+"%" : "—";
+
+  const ret30  = fechamentos.length > 30  ? ((precoAtual / fechamentos[fechamentos.length-31]  - 1) * 100) : null;
+  const ret252 = fechamentos.length > 252 ? ((precoAtual / fechamentos[fechamentos.length-253] - 1) * 100) : null;
+  const setRet = (id, v) => {
+    const el = document.getElementById(id);
+    el.textContent = v!=null ? (v>=0?"▲ ":"▼ ")+Math.abs(v).toFixed(2)+"%" : "—";
+    el.className = "card-valor " + (v!=null ? (v>=0?"pos":"neg") : "");
+  };
+  setRet("hs-ret30",  ret30);
+  setRet("hs-ret252", ret252);
+
+  document.getElementById("hs-maxh").innerHTML = maximas.length ? fmtN(Math.max(...maximas),2,"","R$ ") : "—";
+  document.getElementById("hs-minh").innerHTML = minimas.length ? fmtN(Math.min(...minimas),2,"","R$ ") : "—";
+}
+
+function ordenarHistorico(col) {
+  if (histSortCol === col) histSortAsc = !histSortAsc;
+  else { histSortCol = col; histSortAsc = false; }
+  ordenarHistoricoLocal();
+  renderizarTabelaHistorico();
+}
+
+function ordenarHistoricoLocal() {
+  historicoFiltrado.sort((a,b) => {
+    let va = a[histSortCol], vb = b[histSortCol];
+    if (va == null) va = histSortAsc ? Infinity : -Infinity;
+    if (vb == null) vb = histSortAsc ? Infinity : -Infinity;
+    if (typeof va === "string") return histSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+    return histSortAsc ? va - vb : vb - va;
+  });
+}
+
+function filtrarHistoricoTabela() {
+  const busca = document.getElementById("hist-busca-data").value.trim();
+  historicoFiltrado = busca
+    ? historicoDados.filter(c => (c.data||"").includes(busca))
+    : historicoDados.slice();
+  ordenarHistoricoLocal();
+  renderizarTabelaHistorico();
+}
+
+function renderizarTabelaHistorico() {
+  const tbody = document.getElementById("tbody-historico");
+  document.getElementById("hist-total").textContent =
+    `${historicoFiltrado.length.toLocaleString("pt-BR")} registro(s)`;
+  tbody.innerHTML = historicoFiltrado.map(c => `
+    <tr>
+      <td>${c.data || "—"}</td>
+      <td>${fmtN(c.abertura,2,"","R$ ")}</td>
+      <td>${fmtN(c.maxima,2,"","R$ ")}</td>
+      <td>${fmtN(c.minima,2,"","R$ ")}</td>
+      <td>${fmtN(c.fechamento,2,"","R$ ")}</td>
+      <td>${fmtI(c.volume)}</td>
+    </tr>
+  `).join("");
+}
+
+function exportarHistoricoCSV() {
+  if (!historicoFiltrado.length) return;
+  const cols = ["data","abertura","maxima","minima","fechamento","volume"];
+  const bom  = "\uFEFF";
+  const csv  = bom + [cols.join(","),
+    ...historicoFiltrado.map(r => cols.map(c => r[c] ?? "").join(","))
+  ].join("\n");
+  const a    = document.createElement("a");
+  a.href     = URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8"}));
+  a.download = `historico_${ticker.replace(".SA","")}_${new Date().toISOString().substring(0,10)}.csv`;
+  a.click();
+}
+
+// ── Exportação .xlsx / .pdf — geradas no servidor (ver GET /exportar/...) ───
+// Ao contrário do CSV acima (montado aqui no navegador a partir do que já
+// está carregado), estes formatos pedem ao servidor para gerar o arquivo
+// formatado na hora, então precisam do cabeçalho de autenticação.
+async function baixarExportacao(url) {
+  try {
+    const r = await fetchComTimeout(url, {headers: authHeaders()}, 30000);
+    if (!r.ok) {
+      let msg = "Erro ao gerar a exportação.";
+      try { msg = (await r.json()).detail || msg; } catch (_e) { /* ignora */ }
+      alert(msg);
+      return;
+    }
+    const blob  = await r.blob();
+    const cd    = r.headers.get("Content-Disposition") || "";
+    const match = cd.match(/filename="([^"]+)"/);
+    const a     = document.createElement("a");
+    a.href      = URL.createObjectURL(blob);
+    a.download  = match ? match[1] : "exportacao";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch (e) {
+    console.error("Erro ao baixar exportação:", e);
+    alert("Não foi possível gerar a exportação. Verifique sua conexão.");
+  }
+}
+
+function exportarHistoricoXlsx() { _exportarHistoricoServidor("xlsx"); }
+function exportarHistoricoPdf()  { _exportarHistoricoServidor("pdf");  }
+
+function _exportarHistoricoServidor(formato) {
+  if (!ticker) return;
+  const code    = ticker.replace(".SA","");
+  const periodo = document.getElementById("hist-periodo").value;
+  const de      = calcularDataInicio(periodo);
+  const params  = new URLSearchParams({formato});
+  if (de) params.set("de", de);
+  baixarExportacao(`${API}/exportar/cotacoes/${code}?${params}`);
+}
+
+// ── Tabela de Opções (lógica idêntica à v10) ─────────────────────────────────
+function atualizarTabela(opcoes, ts) {
+  dadosBrutos = opcoes || [];
+  atualizarVencimentos();
+  filtrar();
+  document.getElementById("stats-bar").style.display = "flex";
+  document.getElementById("st-ts").textContent = ts ? ts.substring(11,19) : "—";
+}
+
+function atualizarVencimentos() {
+  const vencs = [...new Set(dadosBrutos.map(o => o.vencimento).filter(Boolean))].sort();
+  const sel   = document.getElementById("sel-venc");
+  const cur   = sel.value;
+  sel.innerHTML = '<option value="">Todos</option>' +
+    vencs.map(v => `<option value="${v}"${v===cur?" selected":""}>${v}</option>`).join("");
+}
+
+function filtrar() {
+  const tipo  = document.getElementById("sel-tipo").value;
+  const venc  = document.getElementById("sel-venc").value;
+  const smin  = parseFloat(document.getElementById("inp-smin").value) || 0;
+  const smax  = parseFloat(document.getElementById("inp-smax").value) || Infinity;
+  const busca = document.getElementById("inp-busca").value.toLowerCase();
+  const iqmin = parseFloat(document.getElementById("inp-iq").value)   || 0;
+
+  dadosFiltrados = dadosBrutos.filter(o => {
+    if (tipo  && o.tipo !== tipo)                      return false;
+    if (venc  && o.vencimento !== venc)                return false;
+    if (o.strike < smin || o.strike > smax)            return false;
+    if (busca && !o.codigo?.toLowerCase().includes(busca)) return false;
+    if (iqmin && (o.iq_calc || 0) < iqmin)             return false;
+    return true;
+  });
+
+  ordenarLocal();
+  renderizar();
+  atualizarStats();
+}
+
+function ordenar(col) {
+  if (sortCol === col) sortAsc = !sortAsc;
+  else { sortCol = col; sortAsc = true; }
+  document.querySelectorAll("#tabela thead th").forEach(th => th.classList.remove("sorted"));
+  const ths = document.querySelectorAll("#tabela thead th");
+  const cols = ["codigo","tipo","otm_atm_itm","strike","dist_strike","vencimento",
+                "ultimo","variacao_pct","num_negocios","vol_financeiro","vol_implícita",
+                "delta","gamma","theta","vega","rho","iq_calc",
+                "coberto","descoberto","travado","titulares","lancadores","modelo","data_hora"];
+  const idx = cols.indexOf(col);
+  if (idx >= 0 && ths[idx]) ths[idx].classList.add("sorted");
+  ordenarLocal();
+  renderizar();
+}
+
+function ordenarLocal() {
+  dadosFiltrados.sort((a, b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if (va == null) va = sortAsc ? Infinity : -Infinity;
+    if (vb == null) vb = sortAsc ? Infinity : -Infinity;
+    if (typeof va === "string") return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+    return sortAsc ? va - vb : vb - va;
+  });
+}
+
+function renderizar() {
+  const tbody = document.getElementById("tbody");
+  const sem   = document.getElementById("sem-dados");
+
+  if (!dadosFiltrados.length) {
+    tbody.innerHTML = "";
+    sem.style.display = "block";
+    const code = (ticker || "BBAS3.SA").replace(".SA","");
+    const instrEl = document.getElementById("instrucao-ticker");
+    if (instrEl) instrEl.innerHTML =
+      `python cli.py --coletar --ticker ${code}<br>` +
+      `python cli.py --coletar-opcoes --ticker ${code}<br>` +
+      `python cli.py --calcular-greeks --ticker ${code}`;
+    return;
+  }
+  sem.style.display = "none";
+
+  tbody.innerHTML = dadosFiltrados.map(o => {
+    const mon  = (o.otm_atm_itm || "OTM").toLowerCase();
+    const tipo = (o.tipo || "").toLowerCase();
+    const var_ = o.variacao_pct ?? null;
+    const iq   = o.iq_calc ?? o.iq ?? null;
+    const iqPct= iq !== null ? Math.min(iq, 100) : 0;
+    const iqColor = iqPct >= 60 ? "var(--verde)" : iqPct >= 30 ? "var(--amarelo)" : "var(--vermelho)";
+
+    // Flash de alta/baixa: só quando já existe um preço anterior conhecido
+    // para este contrato e ele mudou de verdade — a primeira vez que um
+    // contrato aparece (ou troca de ticker) não deve flashar sem motivo.
+    let flashClasse = "";
+    const anterior = precosAnterioresOpcoes.get(o.codigo);
+    if (anterior !== undefined && o.ultimo != null && o.ultimo !== anterior) {
+      flashClasse = o.ultimo > anterior ? "flash-alta" : "flash-baixa";
+    }
+
+    return `<tr class="${flashClasse}">
+      <td style="font-weight:500">${o.codigo || "—"}</td>
+      <td class="${tipo}">${o.tipo || "—"}</td>
+      <td><span class="${mon}">${o.otm_atm_itm || "—"}</span></td>
+      <td>${fmtN(o.strike, 2)}</td>
+      <td class="${(o.dist_strike||0)>=0?"pos":"neg"}">${fmtN(o.dist_strike,2,"%")}</td>
+      <td>${o.vencimento || "—"}</td>
+      <td>${fmtN(o.ultimo, 2, "", "R$ ")}</td>
+      <td class="${var_===null?"nil":var_>=0?"pos":"neg"}">${var_===null?"—":(var_>=0?"▲ ":"▼ ")+Math.abs(var_).toFixed(2)+"%"}</td>
+      <td>${fmtI(o.num_negocios)}</td>
+      <td>${fmtM(o.vol_financeiro)}</td>
+      <td>${fmtN(o.vol_implícita!=null?o.vol_implícita*100:null,2,"%")}</td>
+      <td class="${(o.delta||0)>=0?"pos":"neg"}">${fmtN(o.delta,4)}</td>
+      <td>${fmtN(o.gamma,6)}</td>
+      <td class="neg">${fmtN(o.theta,4)}</td>
+      <td>${fmtN(o.vega,4)}</td>
+      <td>${fmtN(o.rho,4)}</td>
+      <td>
+        <div class="iq-bar">
+          ${iq!==null?iq.toFixed(0):"—"}
+          ${iq!==null?`<div class="iq-track"><div class="iq-fill" style="width:${iqPct}%;background:${iqColor}"></div></div>`:""}
+        </div>
+      </td>
+      <td class="nil">${o.coberto    ?? "—"}</td>
+      <td class="nil">${o.descoberto ?? "—"}</td>
+      <td class="nil">${o.travado    ?? "—"}</td>
+      <td class="nil">${o.titulares  ?? "—"}</td>
+      <td class="nil">${o.lancadores ?? "—"}</td>
+      <td style="color:var(--text2)">${o.modelo || "—"}</td>
+      <td style="color:var(--text2)">${(o.data_hora||"").substring(0,16)}</td>
+    </tr>`;
+  }).join("");
+
+  dadosFiltrados.forEach(o => {
+    if (o.ultimo != null) precosAnterioresOpcoes.set(o.codigo, o.ultimo);
+  });
+}
+
+function atualizarStats() {
+  const t = dadosBrutos.length, e = dadosFiltrados.length;
+  document.getElementById("st-total").textContent = t.toLocaleString("pt-BR");
+  document.getElementById("st-exib").textContent  = e.toLocaleString("pt-BR");
+  document.getElementById("st-call").textContent  = dadosFiltrados.filter(o=>o.tipo==="CALL").length;
+  document.getElementById("st-put").textContent   = dadosFiltrados.filter(o=>o.tipo==="PUT").length;
+  document.getElementById("st-itm").textContent   = dadosFiltrados.filter(o=>o.otm_atm_itm==="ITM").length;
+  document.getElementById("st-atm").textContent   = dadosFiltrados.filter(o=>o.otm_atm_itm==="ATM").length;
+  document.getElementById("st-otm").textContent   = dadosFiltrados.filter(o=>o.otm_atm_itm==="OTM").length;
+}
+
+// ── Helper: fetch com timeout via AbortController ────────────────────────────
+function fetchComTimeout(url, opts={}, ms=15000) {
+  const ctrl = new AbortController();
+  const id   = setTimeout(()=>ctrl.abort(), ms);
+  return fetch(url, {...opts, signal:ctrl.signal})
+    .then(r  => { clearTimeout(id); return r; })
+    .catch(e => { clearTimeout(id); throw e; });
+}
+
+// ── Atualização manual da aba Opções (lê banco) ──────────────────────────────
+async function atualizarManual() {
+  if (!ticker) return;
+  const code = ticker.replace(".SA","");
+  try {
+    const r = await fetchComTimeout(`${API}/opcoes/${code}?limite=2000`, {headers: authHeaders()});
+    const d = await r.json();
+    atualizarTabela(d.opcoes, new Date().toISOString());
+    const cr = await fetchComTimeout(`${API}/cotacao-atual/${code}`, {headers: authHeaders()});
+    const cd = await cr.json();
+    atualizarCotacao(cd);
+  } catch(e) {
+    if (e.name === "AbortError")
+      console.warn("Timeout — servidor não respondeu em 15s");
+    else
+      console.error("Erro ao atualizar:", e);
+  }
+}
+
+// ── Coletar dados via API (POST /coletar) ─────────────────────────────────────
+async function coletar() {
+  if (!ticker) return;
+  const code = ticker.replace(".SA","");
+  const btn  = document.getElementById("btn-coletar");
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Coletando..."; }
+  try {
+    const r = await fetchComTimeout(
+      `${API}/coletar/${code}?periodo=2y&opcoes=true&greeks=true`,
+      { method: "POST", headers: authHeaders() }, 120000
+    );
+    if (!r.ok) {
+      const err = await r.json();
+      alert("Erro na coleta: " + (err.detail || r.status));
+      return;
+    }
+    const d = await r.json();
+    console.log("Coleta concluída:", d);
+    await new Promise(res => setTimeout(res, 1000));
+    await atualizarManual();
+  } catch(e) {
+    console.error(e);
+    alert("Erro de conexão. Verifique se o servidor está rodando.");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "⬇ Coletar agora"; }
+  }
+}
+
+// ── Exportar CSV (aba Opções) ─────────────────────────────────────────────────
+function exportarCSV() {
+  if (!dadosFiltrados.length) return;
+  const cols = Object.keys(dadosFiltrados[0]);
+  const bom  = "\uFEFF";
+  const csv  = bom + [cols.join(","),
+    ...dadosFiltrados.map(r => cols.map(c => {
+      const v = r[c] ?? "";
+      return String(v).includes(",") ? `"${v}"` : v;
+    }).join(","))
+  ].join("\n");
+  const a    = document.createElement("a");
+  a.href     = URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8"}));
+  a.download = `opcoes_${ticker.replace(".SA","")}_${new Date().toISOString().substring(0,10)}.csv`;
+  a.click();
+}
+
+// .xlsx/.pdf são gerados no servidor (dados completos da cadeia, não só o
+// que está filtrado na tela) — respeitam tipo/vencimento já selecionados,
+// mas não os filtros só-visuais (strike min/max, busca, IQ mín).
+function exportarOpcoesXlsx() { _exportarOpcoesServidor("xlsx"); }
+function exportarOpcoesPdf()  { _exportarOpcoesServidor("pdf");  }
+
+function _exportarOpcoesServidor(formato) {
+  if (!ticker) return;
+  const code   = ticker.replace(".SA","");
+  const tipo   = document.getElementById("sel-tipo").value;
+  const venc   = document.getElementById("sel-venc").value;
+  const params = new URLSearchParams({formato});
+  if (tipo) params.set("tipo", tipo);
+  if (venc) params.set("vencimento", venc);
+  baixarExportacao(`${API}/exportar/opcoes/${code}?${params}`);
+}
+
+// ── Alertas (lógica idêntica à v10) ──────────────────────────────────────────
+async function carregarAlertas() {
+  if (!ticker) return;
+  const code = ticker.replace(".SA","");
+  try {
+    const r = await fetchComTimeout(`${API}/alertas?ticker=${code}`, {headers: authHeaders()});
+    if (!r.ok) {
+      if (r.status === 401) {
+        document.getElementById("al-erro").textContent = "Token inválido — configure em 🔑 Token";
+      }
+      renderizarAlertas([]);
+      return;
+    }
+    const d = await r.json();
+    renderizarAlertas(d.alertas || []);
+  } catch(e) {
+    console.error("Erro ao carregar alertas:", e);
+    renderizarAlertas([]);
+  }
+}
+
+function renderizarAlertas(lista) {
+  const tbody = document.getElementById("al-tbody");
+  const vazio = document.getElementById("al-vazio");
+  if (!lista.length) {
+    tbody.innerHTML = "";
+    vazio.style.display = "block";
+    return;
+  }
+  vazio.style.display = "none";
+  tbody.innerHTML = lista.map(a => `
+    <tr>
+      <td>${a.id}</td>
+      <td>${a.tipo}</td>
+      <td>${a.codigo || "—"}</td>
+      <td>${a.operador} ${a.valor}</td>
+      <td><span class="alerta-badge ${a.activo ? 'ativo' : 'inativo'}">${a.activo ? 'sim' : 'não'}</span></td>
+      <td>${a.disparado ? '<span class="alerta-badge disparado">🔔 sim</span>' : '—'}</td>
+      <td>${a.cooldown_min != null ? a.cooldown_min.toFixed(0) + 'min' : '—'}</td>
+      <td>${a.ultimo_val != null ? Number(a.ultimo_val).toFixed(4) : '—'}</td>
+      <td><button class="danger" onclick="removerAlertaUI(${a.id})" style="padding:2px 8px;font-size:11px">✕</button></td>
+    </tr>
+  `).join("");
+}
+
+async function criarAlerta() {
+  const erroEl = document.getElementById("al-erro");
+  erroEl.textContent = "";
+  if (!ticker) return;
+  const code     = ticker.replace(".SA","");
+  const tipo     = document.getElementById("al-tipo").value;
+  const operador = document.getElementById("al-operador").value;
+  const valorStr = document.getElementById("al-valor").value;
+  const codigo   = document.getElementById("al-codigo").value.trim();
+  const cooldown = document.getElementById("al-cooldown").value || "15";
+
+  if (!valorStr) {
+    erroEl.textContent = "Informe um valor.";
+    return;
+  }
+
+  const params = new URLSearchParams({
+    ticker: code, tipo, operador, valor: valorStr, cooldown_min: cooldown,
+  });
+  if (codigo) params.set("codigo", codigo);
+
+  try {
+    const r = await fetchComTimeout(
+      `${API}/alertas?${params.toString()}`,
+      { method: "POST", headers: authHeaders() }
+    );
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      erroEl.textContent = err.detail || `Erro ${r.status} ao criar alerta.`;
+      return;
+    }
+    document.getElementById("al-valor").value = "";
+    document.getElementById("al-codigo").value = "";
+    await carregarAlertas();
+  } catch(e) {
+    erroEl.textContent = "Erro de conexão ao criar alerta.";
+    console.error(e);
+  }
+}
+
+async function removerAlertaUI(id) {
+  try {
+    const r = await fetchComTimeout(
+      `${API}/alertas/${id}`,
+      { method: "DELETE", headers: authHeaders() }
+    );
+    if (r.ok) await carregarAlertas();
+  } catch(e) {
+    console.error("Erro ao remover alerta:", e);
+  }
+}
+
+// ── Aba Configurações ────────────────────────────────────────────────────────
+async function carregarConfig() {
+  const sel = document.getElementById("sel-ticker");
+  document.getElementById("cfg-tickers").textContent =
+    sel ? [...sel.options].map(o => o.text).join(" · ") : "—";
+
+  try {
+    const r = await fetchComTimeout(`${API}/status`, {headers: authHeaders()});
+    const d = await r.json();
+    document.getElementById("cfg-status").innerHTML = `
+      <b>Versão:</b> ${d.versao || "—"}<br>
+      <b>Scheduler:</b> ${d.scheduler?.rodando ? "✅ ativo" : "⛔ parado"}<br>
+      <b>Conexões WebSocket ativas:</b> ${d.ws_clientes ?? "—"}<br>
+      <b>Autenticação opcoes.net.br:</b> ${d.auth_configurada ? "✅ configurada" : "⚠️ não configurada — usando yfinance"}
+    `;
+  } catch(e) {
+    document.getElementById("cfg-status").textContent = "Erro ao carregar status do sistema.";
+  }
+
+  try {
+    const r = await fetchComTimeout(`${API}/resumo`, {headers: authHeaders()});
+    const d = await r.json();
+    document.getElementById("cfg-resumo").innerHTML = `
+      <b>Cotações no banco:</b> ${fmtI(d.cotacoes?.total)}
+        (${d.cotacoes?.inicio || "—"} a ${d.cotacoes?.fim || "—"})<br>
+      <b>Opções no banco:</b> ${fmtI(d.opcoes)}<br>
+      <b>Greeks calculados:</b> ${fmtI(d.greeks)}<br>
+      <b>Snapshots registrados:</b> ${fmtI(d.snapshots)}<br>
+      <b>Tickers com dados coletados:</b> ${fmtI(d.tickers?.length)} — ${(d.tickers || []).map(t=>t.replace(".SA","")).join(", ") || "nenhum"}
+    `;
+  } catch(e) {
+    document.getElementById("cfg-resumo").textContent = "Erro ao carregar resumo do banco.";
+  }
+}
+
+// ── Formatação ────────────────────────────────────────────────────────────────
+function fmt(v, d=2)       { return v!=null ? Number(v).toFixed(d) : "—"; }
+function fmtN(v, d=2, suf="", pre="") {
+  return v!=null ? pre + Number(v).toFixed(d) + suf : `<span class="nil">—</span>`;
+}
+function fmtI(v) { return v!=null ? Number(v).toLocaleString("pt-BR") : `<span class="nil">—</span>`; }
+function fmtM(v) {
+  if (v == null) return `<span class="nil">—</span>`;
+  if (v >= 1e6)  return "R$ " + (v/1e6).toFixed(1) + "M";
+  if (v >= 1e3)  return "R$ " + (v/1e3).toFixed(1) + "K";
+  return "R$ " + Number(v).toFixed(2);
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+init();
+setInterval(atualizarAutomaticamente, 17000);
+
+function atualizarAutomaticamente() {
+    if (!ticker) return;
+    carregarAbaAtiva();
+}
+
+</script>
+</body>
+</html>

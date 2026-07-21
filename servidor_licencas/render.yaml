@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: servidor-licencas-opcoes-b3
+    runtime: python
+    plan: starter
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /saude
+    envVars:
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: MERCADOPAGO_WEBHOOK_SECRET
+        sync: false
+      - key: MERCADOPAGO_ACCESS_TOKEN
+        sync: false
+      - key: LICENCA_ADMIN_TOKEN
+        sync: false
+      - key: LICENCA_CHAVE_PRIVADA_PEM
+        sync: false
+      - key: LICENCA_DB_PATH
+        value: /data/servidor_licencas.db
+    disk:
+      name: dados-servidor-licencas
+      mountPath: /data
+      sizeGB: 1

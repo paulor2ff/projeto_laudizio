@@ -1,0 +1,53 @@
+# ── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.Python
+.venv/
+venv/
+env/
+
+# ── Dados e logs gerados em execução ────────────────────────────────────────
+# (encontrados no zip enviado — não devem ser versionados)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.log
+plataforma.log
+
+# ── Segredos e credenciais locais ───────────────────────────────────────────
+api_token.txt
+admin_token.txt
+licenca.json
+alertas.json
+*.pem
+.env
+.env.*
+
+# ── Exportações geradas pela CLI (--exportar / --exportar-opcoes) ──────────
+cotacoes_*.csv
+opcoes_*.csv
+
+# ── Build (Nuitka) ──────────────────────────────────────────────────────────
+build/
+dist/
+*.build/
+*.dist/
+*.onefile-build/
+*.spec
+
+# ── Testes / cobertura ──────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# ── Editores / SO ────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── Ferramentas de IA locais ─────────────────────────────────────────────────
+.qodo/

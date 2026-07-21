@@ -1,0 +1,6 @@
+# Dependências de desenvolvimento — apenas para correr a suite de testes.
+# Instalar com: pip install -r requirements-dev.txt
+# (requer também requirements.txt já instalado)
+
+pytest>=8.0.0
+pypdf>=4.0.0              # Só para os testes lerem o texto dos PDFs exportados de volta

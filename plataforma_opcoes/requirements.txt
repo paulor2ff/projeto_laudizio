@@ -1,0 +1,38 @@
+# Plataforma de Opções B3 — Dependências
+# Instalar com: pip install -r requirements.txt
+
+# ── Dados de mercado ──────────────────────────────────────────────────────────
+yfinance>=0.2.40          # Coleta de cotações e cadeia de opções (Yahoo Finance)
+pandas>=2.0.0             # Manipulação de DataFrames, exportação CSV
+numpy>=1.26.0             # Cálculos vetorizados para Greeks
+
+# ── Cálculo financeiro ────────────────────────────────────────────────────────
+scipy>=1.12.0             # Distribuição normal (N(d1), N(d2)) para Black-Scholes
+                          # Opcional — o sistema usa aproximação polinomial se ausente
+
+# ── API e dashboard ───────────────────────────────────────────────────────────
+fastapi>=0.111.0          # Framework REST + WebSocket
+uvicorn[standard]>=0.29.0 # Servidor ASGI para FastAPI
+
+# ── Agendamento ───────────────────────────────────────────────────────────────
+APScheduler>=3.10.0       # Scheduler com suporte a timezone (America/Sao_Paulo)
+
+# ── HTTP / autenticação ───────────────────────────────────────────────────────
+requests>=2.31.0          # Sessão autenticada (opcoes.net.br) + API do BCB (CDI)
+pytz>=2024.1              # Timezone America/Sao_Paulo no scheduler guard
+
+# ── Licenciamento ──────────────────────────────────────────────────────────────
+cryptography>=42.0.0      # Verificação de assinatura Ed25519 dos tokens de licença
+
+# ── Exportação (--formato xlsx|pdf) ───────────────────────────────────────────
+openpyxl>=3.1.0           # Exportação .xlsx formatada (cabeçalho, cores, nº formatado)
+reportlab>=4.0.0          # Exportação .pdf formatada — puro Python, sem dependência de
+                          # sistema (Pango/Cairo etc.), compila bem com Nuitka
+
+# ── Stdlib (já incluídas no Python 3.11+, listadas para referência) ───────────
+# sqlite3    — banco de dados
+# decimal    — precisão financeira
+# logging    — log estruturado
+# argparse   — CLI
+# pathlib    — caminhos portáveis
+# csv        — exportação CSV
