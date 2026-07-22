@@ -14,6 +14,7 @@ jobs:
   build:
 
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
@@ -29,75 +30,64 @@ jobs:
 
     defaults:
       run:
+        shell: bash
         working-directory: plataforma_opcoes
 
     steps:
 
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: plataforma_opcoes/requirements-build.txt
 
-    - name: Configurar Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.12"
+      - name: Atualizar pip
+        run: |
+          python -m pip install --upgrade pip
 
-        # NOVO:
-        # Cache das dependências Python
-        cache: "pip"
-        cache-dependency-path: plataforma_opcoes/requirements-build.txt
+      - name: Instalar dependências
+        run: |
+          pip install -r requirements-build.txt
 
+      - name: Verificar estrutura do projeto
+        run: |
+          echo "Diretório atual:"
+          pwd
 
-    - name: Atualizar pip
-      run: |
-        python -m pip install --upgrade pip
+          echo ""
+          echo "Conteúdo:"
+          ls -la
 
+          echo ""
+          echo "Conteúdo da pasta build:"
+          ls -la build
 
-    - name: Instalar dependências
-      run: |
-        pip install -r requirements-build.txt
+      - name: Validar sintaxe do projeto
+        run: |
+          python -m compileall .
 
+      - name: Compilar executável
+        run: |
+          ${{ matrix.script }}
 
-    # NOVO:
-    # Verificação antes da compilação
-    - name: Verificar estrutura do projeto
-      run: |
-        echo "Sistema operacional:"
-        python --version
+      - name: Verificar artefatos gerados
+        run: |
+          if [ -d dist ]; then
+            echo "Conteúdo da pasta dist:"
+            ls -R dist
+          else
+            echo "A pasta dist não foi criada."
+            exit 1
+          fi
 
-        echo "Diretório atual:"
-        pwd
-
-        echo "Arquivos:"
-        ls -la
-
-        echo "Scripts de build:"
-        ls -la build/
-
-
-    # NOVO:
-    # Executa testes básicos antes de empacotar
-    - name: Validar projeto
-      run: |
-        python -m compileall .
-
-
-    - name: Compilar executável
-      run: |
-        ${{ matrix.script }}
-
-
-    # NOVO:
-    # Mostra resultado do build
-    - name: Verificar saída do build
-      run: |
-        echo "Conteúdo da pasta dist:"
-        ls -la dist/
-
-
-    - name: Publicar Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: executavel-${{ matrix.os }}-${{ github.ref_name }}
-        path: plataforma_opcoes/dist/
-        retention-days: 30
+      - name: Publicar Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: executavel-${{ matrix.os }}-${{ github.ref_name }}
+          path: plataforma_opcoes/dist/
+          if-no-files-found: error
+          retention-days: 30
