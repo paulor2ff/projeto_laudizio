@@ -495,7 +495,6 @@ def delete_alerta(
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def _row_to_dict(row) -> dict:
-    """Converte sqlite3.Row para dict serializável."""
     try:
         return dict(row)
     except Exception:
@@ -503,12 +502,6 @@ def _row_to_dict(row) -> dict:
 
 
 def _normalizar_ticker(ticker: str) -> str:
-    """
-    Normaliza um ticker recebido via URL para o formato canónico usado no
-    banco (ex.: 'BBAS3.SA'). Sem isto, um cliente enviando 'bbas3' recebia
-    sempre 0 resultados — o sufixo '.SA' era acrescentado, mas a caixa não
-    era normalizada, e a comparação no SQLite é sensível a maiúsculas.
-    """
     t = ticker.upper()
     return t if t.endswith(".SA") else f"{t}.SA"
 

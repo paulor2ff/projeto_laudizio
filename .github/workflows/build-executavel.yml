@@ -6,6 +6,10 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: read
+  actions: write
+
 jobs:
   build:
 
@@ -32,25 +36,68 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+
     - name: Configurar Python
       uses: actions/setup-python@v5
       with:
         python-version: "3.12"
 
+        # NOVO:
+        # Cache das dependências Python
+        cache: "pip"
+        cache-dependency-path: plataforma_opcoes/requirements-build.txt
+
+
     - name: Atualizar pip
-      run:
+      run: |
         python -m pip install --upgrade pip
+
 
     - name: Instalar dependências
       run: |
         pip install -r requirements-build.txt
 
+
+    # NOVO:
+    # Verificação antes da compilação
+    - name: Verificar estrutura do projeto
+      run: |
+        echo "Sistema operacional:"
+        python --version
+
+        echo "Diretório atual:"
+        pwd
+
+        echo "Arquivos:"
+        ls -la
+
+        echo "Scripts de build:"
+        ls -la build/
+
+
+    # NOVO:
+    # Executa testes básicos antes de empacotar
+    - name: Validar projeto
+      run: |
+        python -m compileall .
+
+
     - name: Compilar executável
       run: |
         ${{ matrix.script }}
 
+
+    # NOVO:
+    # Mostra resultado do build
+    - name: Verificar saída do build
+      run: |
+        echo "Conteúdo da pasta dist:"
+        ls -la dist/
+
+
     - name: Publicar Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: executavel-${{ matrix.os }}
+        name: executavel-${{ matrix.os }}-${{ github.ref_name }}
         path: plataforma_opcoes/dist/
+        retention-days: 30
