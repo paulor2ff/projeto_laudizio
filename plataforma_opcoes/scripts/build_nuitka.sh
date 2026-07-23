@@ -9,7 +9,7 @@
 #
 # Uso:
 #   cd plataforma_opcoes
-#   bash build/build_nuitka.sh
+#   bash scripts/build_nuitka.sh
 #
 # Resultado: dist/PlataformaOpcoesB3 (Linux) ou dist/PlataformaOpcoesB3.app (macOS)
 #
@@ -20,13 +20,38 @@
 
 set -e
 
-cd "$(dirname "$0")/.."   # garante que roda a partir da raiz do projecto
-
-pip install nuitka --break-system-packages -q 2>/dev/null || pip install nuitka -q
+cd "$(dirname "$0")/.."   # Garante que roda a partir da raiz do projeto.
 
 echo "Iniciando compilação — isto pode demorar vários minutos..."
+echo ""
 
-python3 -m nuitka \
+echo "========== DIAGNÓSTICO DO AMBIENTE =========="
+echo ""
+
+echo "Python utilizado:"
+python --version
+
+echo ""
+echo "Executável:"
+python -c "import sys; print(sys.executable)"
+
+echo ""
+echo "Pip:"
+python -m pip --version
+
+echo ""
+echo "FastAPI:"
+python -c "import fastapi; print(f'FastAPI {fastapi.__version__}')"
+
+echo ""
+echo "Nuitka:"
+python -m nuitka --version
+
+echo ""
+echo "============================================="
+echo ""
+
+python -m nuitka \
   --onefile \
   --output-dir=dist \
   --output-filename=PlataformaOpcoesB3 \

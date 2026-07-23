@@ -38,7 +38,10 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: plataforma_opcoes/requirements-build.txt
+          cache-dependency-path: |
+            plataforma_opcoes/requirements.txt
+            plataforma_opcoes/requirements-build.txt
+          
 
       - name: Atualizar pip
         run: |
@@ -51,6 +54,11 @@ jobs:
       - name: Instalar dependências de build
         run: |
           pip install -r requirements-build.txt
+
+      - name: Diagnóstico de dependências
+        run: |
+          python -m pip list
+          python -c "import fastapi; print('FastAPI instalado:', fastapi.__version__)"
 
       - name: Verificar estrutura do projeto
         run: |
