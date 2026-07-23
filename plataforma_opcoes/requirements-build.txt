@@ -5,4 +5,6 @@
 # (requer também requirements.txt já instalado, e um compilador C:
 #  gcc/clang em Linux/macOS, ou MSVC/MinGW64 em Windows — ver build/BUILD.md)
 
-nuitka>=2.4.0
+Nuitka[onefile]>=2.4.0
+ordered-set
+zstandard
