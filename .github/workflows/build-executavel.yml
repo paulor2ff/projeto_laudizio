@@ -16,15 +16,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: windows-latest
-            script: build/build_nuitka.bat
-
-          - os: ubuntu-latest
-            script: bash build/build_nuitka.sh
-
-          - os: macos-latest
-            script: bash build/build_nuitka.sh
+        os:
+          - windows-latest
+          - ubuntu-latest
+          - macos-latest
 
     runs-on: ${{ matrix.os }}
 
@@ -63,16 +58,21 @@ jobs:
           ls -la
 
           echo ""
-          echo "Conteúdo da pasta build:"
-          ls -la build
+          echo "Conteúdo da pasta scripts:"
+          ls -la scripts
 
       - name: Validar sintaxe do projeto
         run: |
           python -m compileall .
 
+      - name: Dar permissão ao script
+        if: runner.os != 'Windows'
+        run: |
+          chmod +x scripts/build_nuitka.sh
+
       - name: Compilar executável
         run: |
-          ${{ matrix.script }}
+          bash scripts/build_nuitka.sh
 
       - name: Verificar artefatos gerados
         run: |
