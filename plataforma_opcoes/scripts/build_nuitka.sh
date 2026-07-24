@@ -62,7 +62,6 @@ python -m nuitka \
   --include-package=yfinance \
   --include-package=pandas \
   --include-package=numpy \
-  --include-package=scipy \
   --include-package=requests \
   --include-package=cryptography \
   --include-package=pytz \
