@@ -7,7 +7,9 @@ pandas>=2.0.0             # Manipulação de DataFrames, exportação CSV
 numpy>=1.26.0             # Cálculos vetorizados para Greeks
 
 # ── Cálculo financeiro ────────────────────────────────────────────────────────
-scipy>=1.12.0             # Distribuição normal (N(d1), N(d2)) para Black-Scholes
+scipy>=1.12.0             # Distribuição normal (N(d1), N(d2)) p/ Black-Scholes — opcional
+                          # (greeks.py cai para aproximação polinomial se ausente; excluído
+                          # de propósito do build compilado, ver scripts/build_nuitka.sh)
                           # Opcional — o sistema usa aproximação polinomial se ausente
 
 # ── API e dashboard ───────────────────────────────────────────────────────────

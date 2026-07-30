@@ -13,10 +13,26 @@
 #
 # Resultado: dist/PlataformaOpcoesB3 (Linux) ou dist/PlataformaOpcoesB3.app (macOS)
 #
-# NOTA DE HARDWARE: esta compilação envolve fastapi, uvicorn, pandas, numpy,
-# scipy e as suas dependências transitivas (jinja2, pygments, websockets, etc.)
+# NOTA DE HARDWARE: esta compilação envolve fastapi, uvicorn, pandas, numpy
+# e as suas dependências transitivas (jinja2, pygments, websockets, etc.)
 # — em máquinas com 1 núcleo de CPU a fase de compilação C pode levar bem mais
 # de 10 minutos. Com 4+ núcleos, tipicamente 3-6 minutos.
+#
+# scipy É DELIBERADAMENTE EXCLUÍDO do build (--nofollow-import-to=scipy), não
+# esquecido. greeks.py já tem um fallback funcional (aproximação polinomial
+# de Hart para N(x), erro < 7.5e-8) para quando scipy não está disponível —
+# ver o try/except em greeks.py:25-40. scipy foi identificado como a causa
+# provável do build do Windows falhar após ~4h de compilação (exit code 1);
+# suas dependências Fortran/LAPACK são notoriamente lentas e frágeis para
+# compilar com Nuitka+MSVC no runner do GitHub Actions especificamente —
+# Linux e macOS compilam normalmente mesmo com scipy incluído. Simplesmente
+# remover "--include-package=scipy" (tentativa anterior) NÃO resolve isto:
+# Nuitka segue automaticamente qualquer import que encontra no código
+# (`from scipy.stats import norm` em greeks.py continua lá), a flag
+# --include-package é só uma garantia adicional para casos que a detecção
+# automática não pegaria sozinha — para excluir de verdade, é preciso
+# --nofollow-import-to. Isto faz o import de scipy falhar em runtime (por
+# design), o que aciona o fallback já existente em greeks.py.
 
 set -e
 
@@ -65,6 +81,9 @@ python -m nuitka \
   --include-package=requests \
   --include-package=cryptography \
   --include-package=pytz \
+  --include-package=openpyxl \
+  --include-package=reportlab \
+  --nofollow-import-to=scipy \
   --include-data-dir=dashboard=dashboard \
   --assume-yes-for-downloads \
   --company-name="Plataforma Opcoes B3" \
