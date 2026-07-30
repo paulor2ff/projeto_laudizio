@@ -25,6 +25,7 @@ executável só com stdlib compila em segundos, não em minutos.
 from __future__ import annotations
 
 import socket
+import shutil
 import subprocess
 import sys
 import time
@@ -32,11 +33,17 @@ import webbrowser
 from pathlib import Path
 from typing import Optional
 
-# Mesma cautela do config.py com Nuitka: em modo --onefile, __file__ aponta
-# para uma pasta temporária recriada a cada execução; sys.executable aponta
-# para a pasta real do .exe. Ver build/BUILD.md, secção "O que foi corrigido".
-if "__compiled__" in globals():
-    BASE_DIR = Path(sys.executable).parent
+# Mesma cautela do config.py com Nuitka — e a mesma correção real, validada
+# compilando de facto este ficheiro (ver relatório): em modo --onefile,
+# __file__ aponta para uma pasta temporária recriada a cada execução, e
+# sys.executable NÃO é uma alternativa válida — aponta para dentro dessa
+# MESMA pasta temporária efémera, mudando a cada execução. sys.argv[0] é o
+# que o bootstrap onefile do Nuitka resolve para o caminho real e estável
+# do executável.
+IS_COMPILED = "__compiled__" in globals()
+
+if IS_COMPILED:
+    BASE_DIR = Path(sys.argv[0]).resolve().parent
 else:
     BASE_DIR = Path(__file__).resolve().parent
 
@@ -76,6 +83,29 @@ def _caminho_python_venv(venv_dir: Path) -> Path:
     return venv_dir / "bin" / "python"
 
 
+def _python_do_sistema() -> str:
+    """
+    Devolve um interpretador Python real do sistema, para criar o venv.
+
+    sys.executable NÃO serve para isto quando o próprio launcher está
+    compilado (Nuitka --onefile): dentro do binário compilado, ele aponta
+    para um caminho dentro da pasta temporária de extração do onefile
+    (ex.: /tmp/onefile_XXXX/python), que não é um Python executável de
+    verdade — só existe enquanto o processo compilado está a correr.
+    Descoberto ao compilar e testar de facto este ficheiro (ver relatório).
+    """
+    if not IS_COMPILED:
+        return sys.executable
+    for candidato in ("python3", "python"):
+        encontrado = shutil.which(candidato)
+        if encontrado:
+            return encontrado
+    print("❌ Não foi encontrado um Python instalado neste computador.")
+    print("   Instale o Python 3.11+ (https://python.org) e tente novamente,")
+    print("   ou use a versão compilada completa da plataforma (não precisa de Python).")
+    sys.exit(1)
+
+
 def _preparar_ambiente_fonte() -> Path:
     """
     Sem executável compilado por perto: garante um venv local com as
@@ -87,7 +117,7 @@ def _preparar_ambiente_fonte() -> Path:
 
     if not python_venv.exists():
         print("🔧 Preparando ambiente (primeira execução, só acontece uma vez)...")
-        subprocess.run([sys.executable, "-m", "venv", str(venv_dir)], check=True)
+        subprocess.run([_python_do_sistema(), "-m", "venv", str(venv_dir)], check=True)
 
     print("📦 Verificando dependências (pode levar alguns minutos na primeira vez)...")
     resultado = subprocess.run([

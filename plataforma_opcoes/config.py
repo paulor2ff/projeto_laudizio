@@ -18,10 +18,21 @@ import sys
 # e reabrisse o programa, perdendo todo o histórico coletado silenciosamente.
 # "__compiled__" é injectado automaticamente pelo Nuitka em todo módulo
 # compilado — é a forma documentada de detectar isso em runtime.
+#
+# CUIDADO — sys.executable NÃO resolve isto em modo --onefile (o modo usado
+# por build/build_nuitka.sh): dentro do binário compilado, sys.executable
+# aponta para dentro da MESMA pasta de extracção temporária efémera acima
+# (algo como /tmp/onefile_<pid>_<hash>/python), que muda a cada execução —
+# ou seja, o bug persistiria de qualquer forma. Confirmado compilando e
+# executando de facto: duas execuções seguidas do mesmo binário resultavam
+# em BASE_DIR diferente em cada uma. sys.argv[0] é o que o bootstrap onefile
+# do Nuitka resolve para o caminho real e estável do executável — testado
+# e estável em múltiplas execuções, caminho absoluto, caminho relativo, e
+# invocado a partir de outro directório.
 IS_COMPILED = "__compiled__" in globals()
 
 if IS_COMPILED:
-    BASE_DIR = Path(sys.executable).resolve().parent
+    BASE_DIR = Path(sys.argv[0]).resolve().parent
 else:
     BASE_DIR = Path(__file__).resolve().parent
 
@@ -39,7 +50,7 @@ TICKERS = [
 TICKER_PADRAO = "BBAS3.SA"
 
 # ─── Coleta histórica ────────────────────────────────────────────────────────
-PERIODO_PADRAO  = "5y"     # Opções: 1mo 3mo 6mo 1y 2y 5y max
+PERIODO_PADRAO  = "2y"     # Opções: 1mo 3mo 6mo 1y 2y 5y max
 CASAS_DECIMAIS  = "0.0001"
 
 # ─── Scheduler — pregão B3 (segunda a sexta) ─────────────────────────────────

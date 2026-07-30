@@ -14,9 +14,20 @@ REM   build\build_nuitka.bat
 REM
 REM Resultado: dist\PlataformaOpcoesB3.exe
 REM
-REM NOTA DE TEMPO: esta compilacao envolve fastapi, uvicorn, pandas, numpy,
-REM scipy e as dependencias transitivas delas — normalmente 3-8 minutos
-REM num computador com 4+ nucleos.
+REM NOTA DE TEMPO: esta compilacao envolve fastapi, uvicorn, pandas, numpy
+REM e as dependencias transitivas delas — normalmente 3-8 minutos num
+REM computador com 4+ nucleos.
+REM
+REM scipy E DELIBERADAMENTE EXCLUIDO do build (--nofollow-import-to=scipy),
+REM nao esquecido. greeks.py ja tem um fallback funcional (aproximacao
+REM polinomial de Hart, erro < 7.5e-8) para quando scipy nao esta disponivel.
+REM scipy foi identificado como causa provavel de o build do Windows falhar
+REM apos ~4h de compilacao no GitHub Actions — suas dependencias Fortran/
+REM LAPACK sao notoriamente lentas/frageis para compilar com Nuitka+MSVC
+REM nesse runner especificamente. Simplesmente tirar "--include-package=
+REM scipy" NAO basta: o Nuitka segue automaticamente qualquer import que
+REM encontra no codigo (o "from scipy.stats import norm" em greeks.py
+REM continua la) — e preciso --nofollow-import-to para excluir de verdade.
 
 cd /d "%~dp0\.."
 
@@ -36,10 +47,12 @@ python -m nuitka ^
   --include-package=yfinance ^
   --include-package=pandas ^
   --include-package=numpy ^
-  --include-package=scipy ^
   --include-package=requests ^
   --include-package=cryptography ^
   --include-package=pytz ^
+  --include-package=openpyxl ^
+  --include-package=reportlab ^
+  --nofollow-import-to=scipy ^
   --include-data-dir=dashboard=dashboard ^
   --assume-yes-for-downloads ^
   --company-name="Plataforma Opcoes B3" ^

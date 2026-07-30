@@ -7,6 +7,7 @@ estes testes não dependem de db_temp/conftest — só mocks e sockets reais
 """
 
 import socket
+import sys
 import threading
 import time
 
@@ -111,6 +112,32 @@ class TestAguardarServidor:
         t = threading.Thread(target=abrir_depois, daemon=True)
         t.start()
         assert launcher._aguardar_servidor("127.0.0.1", porta, timeout=3, intervalo=0.1) is True
+
+
+class TestPythonDoSistema:
+    def test_nao_compilado_usa_sys_executable(self, monkeypatch):
+        """Rodando como script normal (não compilado), sys.executable é confiável."""
+        assert launcher.IS_COMPILED is False
+        assert launcher._python_do_sistema() == sys.executable
+
+    def test_compilado_usa_shutil_which(self, monkeypatch):
+        """
+        Simula o cenário compilado (Nuitka onefile): sys.executable não
+        serve (aponta para dentro da pasta temporária de extração — bug
+        real encontrado ao compilar de facto este ficheiro), então precisa
+        cair para shutil.which() em busca de um Python real do sistema.
+        """
+        monkeypatch.setattr(launcher, "IS_COMPILED", True)
+        monkeypatch.setattr(launcher.shutil, "which",
+                             lambda nome: "/usr/bin/python3" if nome == "python3" else None)
+        assert launcher._python_do_sistema() == "/usr/bin/python3"
+
+    def test_compilado_sem_python_no_sistema_sai_com_erro(self, monkeypatch, capsys):
+        monkeypatch.setattr(launcher, "IS_COMPILED", True)
+        monkeypatch.setattr(launcher.shutil, "which", lambda nome: None)
+        with pytest.raises(SystemExit):
+            launcher._python_do_sistema()
+        assert "não foi encontrado" in capsys.readouterr().out.lower()
 
 
 class TestPrepararAmbienteFonte:
