@@ -18,7 +18,9 @@ import sys
 # e reabrisse o programa, perdendo todo o histórico coletado silenciosamente.
 # "__compiled__" é injectado automaticamente pelo Nuitka em todo módulo
 # compilado — é a forma documentada de detectar isso em runtime.
-if "__compiled__" in globals():
+IS_COMPILED = "__compiled__" in globals()
+
+if IS_COMPILED:
     BASE_DIR = Path(sys.executable).resolve().parent
 else:
     BASE_DIR = Path(__file__).resolve().parent
@@ -37,7 +39,7 @@ TICKERS = [
 TICKER_PADRAO = "BBAS3.SA"
 
 # ─── Coleta histórica ────────────────────────────────────────────────────────
-PERIODO_PADRAO  = "2y"     # Opções: 1mo 3mo 6mo 1y 2y 5y max
+PERIODO_PADRAO  = "5y"     # Opções: 1mo 3mo 6mo 1y 2y 5y max
 CASAS_DECIMAIS  = "0.0001"
 
 # ─── Scheduler — pregão B3 (segunda a sexta) ─────────────────────────────────
