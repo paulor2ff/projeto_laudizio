@@ -1,18 +1,14 @@
 name: Build Executáveis
-
 on:
   workflow_dispatch:
   push:
     tags:
       - "v*"
-
 permissions:
   contents: read
   actions: write
-
 jobs:
   build:
-
     strategy:
       fail-fast: false
       matrix:
@@ -20,19 +16,14 @@ jobs:
           - windows-latest
           - ubuntu-latest
           - macos-latest
-
     runs-on: ${{ matrix.os }}
-
     defaults:
       run:
         shell: bash
         working-directory: plataforma_opcoes
-
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
@@ -42,50 +33,57 @@ jobs:
             plataforma_opcoes/requirements.txt
             plataforma_opcoes/requirements-build.txt
           
-
       - name: Atualizar pip
         run: |
           python -m pip install --upgrade pip
-
       - name: Instalar dependências da aplicação
         run: |
           pip install -r requirements.txt
-
       - name: Instalar dependências de build
         run: |
           pip install -r requirements-build.txt
-
       - name: Diagnóstico de dependências
         run: |
           python -m pip list
           python -c "import fastapi; print('FastAPI instalado:', fastapi.__version__)"
-
       - name: Verificar estrutura do projeto
         run: |
           echo "Diretório atual:"
           pwd
-
           echo ""
           echo "Conteúdo:"
           ls -la
-
           echo ""
           echo "Conteúdo da pasta scripts:"
           ls -la scripts
-
       - name: Validar sintaxe do projeto
         run: |
           python -m compileall .
-
       - name: Dar permissão ao script
         if: runner.os != 'Windows'
         run: |
           chmod +x scripts/build_nuitka.sh
-
       - name: Compilar executável
         run: |
           bash scripts/build_nuitka.sh
-
+      - name: Compilar launcher (inicialização automática)
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            EXTRA_FLAGS="--windows-console-mode=force"
+          else
+            EXTRA_FLAGS=""
+          fi
+          python -m nuitka \
+            --onefile \
+            --output-dir=dist \
+            --output-filename=IniciarPlataforma \
+            --assume-yes-for-downloads \
+            --company-name="Plataforma Opcoes B3" \
+            --product-name="Iniciar Plataforma de Opcoes B3" \
+            --file-version=11.0.0 \
+            --product-version=11.0.0 \
+            $EXTRA_FLAGS \
+            launcher.py
       - name: Verificar artefatos gerados
         run: |
           if [ -d dist ]; then
@@ -95,7 +93,6 @@ jobs:
             echo "A pasta dist não foi criada."
             exit 1
           fi
-
       - name: Publicar Artifact
         uses: actions/upload-artifact@v4
         with:
