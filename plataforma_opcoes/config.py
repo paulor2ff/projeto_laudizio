@@ -50,13 +50,13 @@ TICKERS = [
 TICKER_PADRAO = "BBAS3.SA"
 
 # ─── Coleta histórica ────────────────────────────────────────────────────────
-PERIODO_PADRAO  = "2y"     # Opções: 1mo 3mo 6mo 1y 2y 5y max
+PERIODO_PADRAO  = "max"     # Opções: 1mo 3mo 6mo 1y 2y 5y max
 CASAS_DECIMAIS  = "0.0001"
 
 # ─── Scheduler — pregão B3 (segunda a sexta) ─────────────────────────────────
 PREGAO_INICIO   = "10:00"  # Horário de Brasília
 PREGAO_FIM      = "18:00"
-INTERVALO_SEG   = 15       # Segundos entre atualizações em tempo real
+INTERVALO_SEG   = 15
 TIMEZONE        = "America/Sao_Paulo"
 
 # ─── API / Dashboard ─────────────────────────────────────────────────────────
