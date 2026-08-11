@@ -24,7 +24,7 @@ Resultado esperado:
 
 ```bash
 # Histórico de preços (2 anos)
-python cli.py --coletar --ticker BBAS3 --periodo 2y
+python cli.py --coletar --ticker BBAS3 --periodo max
 
 # Cadeia de opções
 python cli.py --coletar-opcoes --ticker BBAS3

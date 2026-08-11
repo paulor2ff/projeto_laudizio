@@ -89,7 +89,7 @@ def _job_coleta_tempo_real():
         log.error("Erro no job de tempo real: %s", exc)
         return
 
-    # Verificar alertas activos após a coleta — os dados acabaram de ser actualizados
+    # Verificar alertas ativos após a coleta — os dados acabaram de ser atualizados
     try:
         from alertas import verificar_todos_alertas
         disparados = verificar_todos_alertas()

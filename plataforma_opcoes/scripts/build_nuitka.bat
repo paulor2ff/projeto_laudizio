@@ -36,10 +36,8 @@ pip install nuitka -q
 echo Iniciando compilacao — isto pode demorar varios minutos...
 
 python -m nuitka ^
-  --onefile ^
+  --standalone ^
   --output-dir=dist ^
-  --output-filename=PlataformaOpcoesB3.exe ^
-  --windows-console-mode=force ^
   --include-package=fastapi ^
   --include-package=starlette ^
   --include-package=uvicorn ^
@@ -52,6 +50,7 @@ python -m nuitka ^
   --include-package=pytz ^
   --include-package=openpyxl ^
   --include-package=reportlab ^
+  --include-package=multitasking ^
   --nofollow-import-to=scipy ^
   --include-data-dir=dashboard=dashboard ^
   --assume-yes-for-downloads ^
@@ -61,9 +60,27 @@ python -m nuitka ^
   --product-version=11.0.0 ^
   cli.py
 
+if errorlevel 1 (
+    echo [ERRO] Build Nuitka falhou.
+    exit /b 1
+)
+
+if exist dist\PlataformaOpcoesB3 (
+    rmdir /s /q dist\PlataformaOpcoesB3
+)
+
+move dist\cli.dist dist\PlataformaOpcoesB3
+
+if exist dist\PlataformaOpcoesB3\cli.exe (
+    move dist\PlataformaOpcoesB3\cli.exe dist\PlataformaOpcoesB3\PlataformaOpcoesB3.exe
+) else (
+    echo [ERRO] Executavel cli.exe nao encontrado.
+    exit /b 1
+)
+
 echo.
-echo Build concluido: dist\PlataformaOpcoesB3.exe
-echo.
-echo Antes de distribuir, teste localmente:
-echo   cd dist ^&^& PlataformaOpcoesB3.exe --status
-echo   cd dist ^&^& PlataformaOpcoesB3.exe --dashboard
+echo ==========================================
+echo Build concluido com sucesso.
+echo ==========================================
+echo Executavel:
+echo dist\PlataformaOpcoesB3\PlataformaOpcoesB3.exe
