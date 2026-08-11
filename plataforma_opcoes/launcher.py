@@ -66,8 +66,14 @@ def _banner() -> None:
 
 
 def _encontrar_executavel_compilado() -> Optional[Path]:
-    """Procura um build Nuitka (build/BUILD.md) já pronto ao lado deste launcher."""
+    """
+    Procura o app principal já compilado, ao lado deste launcher.
+    Aceita tanto a pasta standalone (formato atual) quanto um onefile
+    solto (builds antigos/manuais), nessa ordem de prioridade.
+    """
     candidatos = [
+        BASE_DIR / "PlataformaOpcoesB3" / NOME_EXECUTAVEL_COMPILADO,
+        BASE_DIR / "dist" / "PlataformaOpcoesB3" / NOME_EXECUTAVEL_COMPILADO,
         BASE_DIR / "dist" / NOME_EXECUTAVEL_COMPILADO,
         BASE_DIR / NOME_EXECUTAVEL_COMPILADO,
     ]
