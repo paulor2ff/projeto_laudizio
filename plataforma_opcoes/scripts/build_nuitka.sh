@@ -68,9 +68,8 @@ echo "============================================="
 echo ""
 
 python -m nuitka \
-  --onefile \
+  --standalone \
   --output-dir=dist \
-  --output-filename=PlataformaOpcoesB3 \
   --include-package=fastapi \
   --include-package=starlette \
   --include-package=uvicorn \
@@ -91,6 +90,18 @@ python -m nuitka \
   --file-version=11.0.0 \
   --product-version=11.0.0 \
   cli.py
+
+# --standalone gera dist/cli.dist/ com o executável dentro, nomeado a
+# partir do script (cli.exe no Windows, cli/cli.bin em Linux/macOS) —
+# renomeei pra manter um nome amigável e previsível pro launcher achar.
+mv dist/cli.dist dist/PlataformaOpcoesB3
+if [ -f dist/PlataformaOpcoesB3/cli.exe ]; then
+  mv dist/PlataformaOpcoesB3/cli.exe dist/PlataformaOpcoesB3/PlataformaOpcoesB3.exe
+elif [ -f dist/PlataformaOpcoesB3/cli.bin ]; then
+  mv dist/PlataformaOpcoesB3/cli.bin dist/PlataformaOpcoesB3/PlataformaOpcoesB3
+elif [ -f dist/PlataformaOpcoesB3/cli ]; then
+  mv dist/PlataformaOpcoesB3/cli dist/PlataformaOpcoesB3/PlataformaOpcoesB3
+fi
 
 echo ""
 echo "✅ Build concluído: dist/PlataformaOpcoesB3"

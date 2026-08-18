@@ -2,7 +2,7 @@
 cli.py — Interface de linha de comando unificada
 =================================================
 Uso:
-  python cli.py --coletar [--ticker BBAS3] [--periodo 2y]
+  python cli.py --coletar [--ticker BBAS3] [--periodo max]
   python cli.py --coletar-opcoes [--ticker BBAS3]
   python cli.py --coletar-todos
   python cli.py --coletar-opcoes-todos
@@ -320,8 +320,8 @@ def main():
     # Filtros
     parser.add_argument("--ticker",      default=TICKER_PADRAO, metavar="TICKER",
                         help=f"Ticker do ativo (padrão: {TICKER_PADRAO})")
-    parser.add_argument("--periodo",     default="2y",           metavar="PERIODO",
-                        help="Período de coleta: 1mo 3mo 6mo 1y 2y 5y max (padrão: 2y)")
+    parser.add_argument("--periodo",     default="max",           metavar="PERIODO",
+                        help="Período de coleta: 1mo 3mo 6mo 1y 2y 5y max (padrão: max)")
     parser.add_argument("--de",          metavar="AAAA-MM-DD",
                         help="Data inicial do filtro")
     parser.add_argument("--ate",         metavar="AAAA-MM-DD",

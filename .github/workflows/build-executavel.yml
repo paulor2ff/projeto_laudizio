@@ -63,7 +63,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           chmod +x scripts/build_nuitka.sh
-      - name: Compilar executável
+      - name: Compilar executável principal (standalone)
         run: |
           bash scripts/build_nuitka.sh
       - name: Compilar launcher (inicialização automática)
@@ -75,6 +75,7 @@ jobs:
           fi
           python -m nuitka \
             --onefile \
+            --remove-output \
             --output-dir=dist \
             --output-filename=IniciarPlataforma \
             --assume-yes-for-downloads \
@@ -86,13 +87,23 @@ jobs:
             launcher.py
       - name: Verificar artefatos gerados
         run: |
-          if [ -d dist ]; then
-            echo "Conteúdo da pasta dist:"
-            ls -R dist
-          else
-            echo "A pasta dist não foi criada."
+          echo "Conteúdo da pasta dist:"
+          ls -R dist || { echo "A pasta dist não foi criada."; exit 1; }
+          echo ""
+          if [ ! -d "dist/PlataformaOpcoesB3" ]; then
+            echo "ERRO: pasta dist/PlataformaOpcoesB3 (build standalone) não encontrada."
             exit 1
           fi
+          if [ ! -f "dist/PlataformaOpcoesB3/PlataformaOpcoesB3.exe" ] && \
+             [ ! -f "dist/PlataformaOpcoesB3/PlataformaOpcoesB3" ]; then
+            echo "ERRO: executável principal não encontrado dentro de dist/PlataformaOpcoesB3."
+            exit 1
+          fi
+          if [ ! -f "dist/IniciarPlataforma.exe" ] && [ ! -f "dist/IniciarPlataforma" ]; then
+            echo "ERRO: launcher (IniciarPlataforma) não encontrado."
+            exit 1
+          fi
+          echo "OK — app principal e launcher confirmados."
       - name: Publicar Artifact
         uses: actions/upload-artifact@v4
         with:

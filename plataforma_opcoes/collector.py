@@ -120,7 +120,7 @@ def _baixar_historico(ticker: str, periodo: str) -> pd.DataFrame:
     return pd.DataFrame()
 
 
-def coletar_historico(ticker: str, periodo: str = "2y") -> int:
+def coletar_historico(ticker: str, periodo: str = "max") -> int:
     """
     Coleta e salva histórico OHLCV de um ticker.
     Retorna número de novos registros inseridos.
@@ -169,7 +169,7 @@ def coletar_historico(ticker: str, periodo: str = "2y") -> int:
     return novos
 
 
-def coletar_historico_todos(periodo: str = "2y") -> dict:
+def coletar_historico_todos(periodo: str = "max") -> dict:
     """
     Coleta histórico de todos os tickers configurados.
     Falha em um ticker é isolada — os demais continuam sendo coletados.
