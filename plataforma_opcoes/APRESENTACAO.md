@@ -23,7 +23,7 @@ Resultado esperado:
 ## 3. Coletar dados iniciais
 
 ```bash
-# Histórico de preços (2 anos)
+# Histórico de preços (período máximo)
 python cli.py --coletar --ticker BBAS3 --periodo max
 
 # Cadeia de opções
